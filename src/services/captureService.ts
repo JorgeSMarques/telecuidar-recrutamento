@@ -1,9 +1,7 @@
-import { CaptureFormData } from '@/types'
-
-export const submitCaptureForm = async (data: CaptureFormData): Promise<{ success: boolean }> => {
+export const submitCaptureForm = async (data: any) => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve({ success: true })
-    }, 2000)
+      resolve({ success: true, data })
+    }, 1500)
   })
 }
