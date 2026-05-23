@@ -2,10 +2,13 @@ onRecordAfterUpdateSuccess((e) => {
   const { record } = e
   const original = record.original()
 
+  const realizadaAtual = record.getBool('realizada')
   const aprovadoAtual = record.getBool('aprovacaoFinal')
+
+  const realizadaAntiga = original.getBool('realizada')
   const aprovadoAntigo = original.getBool('aprovacaoFinal')
 
-  if (aprovadoAtual && !aprovadoAntigo) {
+  if (realizadaAtual && aprovadoAtual && (!realizadaAntiga || !aprovadoAntigo)) {
     const candidatoId = record.getString('candidatoId')
     if (candidatoId) {
       try {
@@ -13,9 +16,7 @@ onRecordAfterUpdateSuccess((e) => {
         candidate.set('status', 'Contratado')
         $app.saveNoValidate(candidate)
 
-        $app
-          .logger()
-          .info('Mocked notification sent: Welcome to the team!', 'candidatoId', candidatoId)
+        $app.logger().info('Mocked communication sent: contratado', 'candidatoId', candidatoId)
       } catch (err) {
         $app.logger().error('Erro ao atualizar candidato contratado', 'error', err.message)
       }

@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '@/hooks/use-auth'
+import { useRealtime } from '@/hooks/use-realtime'
+import pb from '@/lib/pocketbase/client'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -15,61 +18,104 @@ import { StepStatus } from '@/types'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export default function CandidatoDashboard() {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
-  const [currentStage, setCurrentStage] = useState(2)
+  const [currentStage, setCurrentStage] = useState(1)
+  const [candidate, setCandidate] = useState<any>(null)
+
+  const loadData = async () => {
+    if (!user) return
+    try {
+      const records = await pb
+        .collection('candidates')
+        .getFullList({ filter: `userId="${user.id}"` })
+      if (records.length > 0) {
+        const c = records[0]
+        setCandidate(c)
+        updateStageFromStatus(c.status)
+      }
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 2000)
-    return () => clearTimeout(timer)
-  }, [])
+    loadData()
+  }, [user])
 
-  // Simulated workflow progression
+  useRealtime('candidates', (e) => {
+    if (e.record.userId === user?.id) {
+      setCandidate(e.record)
+      updateStageFromStatus(e.record.status)
+    }
+  })
+
+  // Simulated web search delay on the frontend if needed
   useEffect(() => {
     if (currentStage === 4) {
-      // 3s simulated delay for "Busca Web"
       const t = setTimeout(() => setCurrentStage(5), 3000)
-      return () => clearTimeout(t)
-    } else if (currentStage === 5) {
-      // 5s simulated delay for "Avaliação RH/Diretor"
-      const t = setTimeout(() => setCurrentStage(6), 5000)
       return () => clearTimeout(t)
     }
   }, [currentStage])
+
+  const updateStageFromStatus = (status: string) => {
+    const statusMap: Record<string, number> = {
+      Captação: 1,
+      'Manifestação Pendente': 2,
+      'Avaliação Pendente': 3,
+      'Busca Web Pendente': 4,
+      Bloqueado: 4,
+      'Avaliação RH Pendente': 5,
+      'Avaliação RH Concluída': 5,
+      'Aprovação Diretor Pendente': 6,
+      Aprovado: 8,
+      Rejeitado: 9,
+      Contratado: 9,
+    }
+    const stage = statusMap[status] || 1
+    setCurrentStage(stage)
+  }
 
   const steps = [
     {
       id: 1,
       title: 'Captação',
       status: 'completed' as StepStatus,
-      date: new Date().toLocaleDateString('pt-BR'),
+      date: candidate?.dataCaptura
+        ? new Date(candidate.dataCaptura).toLocaleDateString('pt-BR')
+        : undefined,
     },
     {
       id: 2,
       title: 'Manifestação de Interesse',
       status:
-        currentStage === 2 ? 'active' : currentStage > 2 ? 'completed' : ('blocked' as StepStatus),
-      date: currentStage > 2 ? new Date().toLocaleDateString('pt-BR') : undefined,
+        currentStage === 2 ? 'active' : currentStage > 2 ? 'completed' : ('waiting' as StepStatus),
+      date: candidate?.dataManifestacao
+        ? new Date(candidate.dataManifestacao).toLocaleDateString('pt-BR')
+        : undefined,
     },
     {
       id: 3,
       title: 'Formulário de Avaliação',
       status:
-        currentStage === 3 ? 'active' : currentStage > 3 ? 'completed' : ('blocked' as StepStatus),
-      date: currentStage > 3 ? new Date().toLocaleDateString('pt-BR') : undefined,
+        currentStage === 3 ? 'active' : currentStage > 3 ? 'completed' : ('waiting' as StepStatus),
+      date: candidate?.dataAvaliacao
+        ? new Date(candidate.dataAvaliacao).toLocaleDateString('pt-BR')
+        : undefined,
     },
     {
       id: 4,
       title: 'Busca Web',
       status:
         currentStage === 4 ? 'active' : currentStage > 4 ? 'completed' : ('waiting' as StepStatus),
-      date: currentStage > 4 ? new Date().toLocaleDateString('pt-BR') : undefined,
     },
     {
       id: 5,
       title: 'Avaliação RH/Diretor',
       status:
         currentStage === 5 ? 'active' : currentStage > 5 ? 'completed' : ('waiting' as StepStatus),
-      date: currentStage > 5 ? new Date().toLocaleDateString('pt-BR') : undefined,
     },
     {
       id: 6,
@@ -140,8 +186,8 @@ export default function CandidatoDashboard() {
           </div>
 
           <div className="col-span-1 md:col-span-1 lg:col-span-5 flex flex-col gap-8">
-            {currentStage === 2 && <InteresseForm onSuccess={() => setCurrentStage(3)} />}
-            {currentStage === 3 && <AvaliacaoForm onSuccess={() => setCurrentStage(4)} />}
+            {currentStage === 2 && <InteresseForm onSuccess={loadData} />}
+            {currentStage === 3 && <AvaliacaoForm onSuccess={loadData} />}
             {currentStage === 4 && (
               <div className="text-center p-8 border rounded-[var(--radius)] bg-card shadow-sm animate-fade-in-up">
                 <h3 className="font-semibold text-[1rem] mb-2">Busca Web em Andamento...</h3>

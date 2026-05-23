@@ -1,31 +1,35 @@
 onRecordValidate((e) => {
-  const { record } = e
-  const errors = {}
-
+  const record = e.record
   const telefone = record.getString('telefone')
-  if (telefone && !/^\(\d{2}\) \d{4,5}-\d{4}$/.test(telefone)) {
-    errors['telefone'] = new ValidationError(
-      'invalid_format',
-      'Formato de telefone inválido. Use (XX) XXXXX-XXXX',
-    )
+  if (telefone && !/^\(\d{2}\)\s\d{4,5}-\d{4}$/.test(telefone)) {
+    throw new BadRequestError('Dados inválidos', {
+      telefone: new ValidationError(
+        'invalid_phone',
+        'Formato de telefone inválido. Use (XX) XXXXX-XXXX',
+      ),
+    })
   }
 
   const linkedinUrl = record.getString('linkedinUrl')
   if (linkedinUrl && !/^https:\/\/(www\.)?linkedin\.com/.test(linkedinUrl)) {
-    errors['linkedinUrl'] = new ValidationError(
-      'invalid_url',
-      'URL deve ser do LinkedIn (https://linkedin.com/...)',
-    )
+    throw new BadRequestError('Dados inválidos', {
+      linkedinUrl: new ValidationError('invalid_url', 'URL do LinkedIn inválida.'),
+    })
   }
 
-  const canalCaptacao = record.getString('canalCaptacao')
-  const especifiqueOutro = record.getString('especifiqueOutro')
-  if (canalCaptacao === 'Outro' && !especifiqueOutro) {
-    errors['especifiqueOutro'] = new ValidationError('required', 'Especifique o canal de captação')
+  const email = record.getString('email')
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new BadRequestError('Dados inválidos', {
+      email: new ValidationError('invalid_email', 'Formato de e-mail inválido.'),
+    })
   }
 
-  if (Object.keys(errors).length > 0) {
-    throw new BadRequestError('Dados inválidos', errors)
+  const canal = record.getString('canalCaptacao')
+  const especifique = record.getString('especifiqueOutro')
+  if (canal === 'Outro' && !especifique) {
+    throw new BadRequestError('Dados inválidos', {
+      especifiqueOutro: new ValidationError('required', 'Por favor, especifique o outro canal.'),
+    })
   }
 
   e.next()

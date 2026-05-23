@@ -21,7 +21,7 @@ onRecordAfterCreateSuccess((e) => {
     $app
       .logger()
       .info(
-        'Mocked notification sent: Interview scheduled',
+        'Mocked communication sent: entrevista_agendada',
         'candidatoId',
         candidatoId,
         'email',

@@ -25,7 +25,8 @@ import { Loader2 } from 'lucide-react'
 import { CandidatoAprovacao } from '@/types'
 import { aprovacaoService } from '@/services/aprovacao-service'
 import { cn } from '@/lib/utils'
-import { useSubmit } from '@/hooks/use-submit'
+import { useAprovacao } from '@/hooks/use-aprovacao'
+import { useRealtime } from '@/hooks/use-realtime'
 
 const getBadgeStyles = (status: string) => {
   switch (status) {
@@ -101,8 +102,8 @@ export default function AprovacaoPage() {
 
   const blocker = useUnsavedChanges(isDirty)
 
-  const loadData = async () => {
-    setLoading(true)
+  const loadData = async (showLoading = true) => {
+    if (showLoading) setLoading(true)
     try {
       const data = await aprovacaoService.getCandidatos()
       setCandidatos(data)
@@ -116,6 +117,10 @@ export default function AprovacaoPage() {
   useEffect(() => {
     loadData()
   }, [])
+
+  useRealtime('candidates', () => {
+    loadData(false)
+  })
 
   const handleSelectCandidate = (id: string) => {
     if (id === displayId) return
@@ -163,31 +168,28 @@ export default function AprovacaoPage() {
     return true
   }
 
-  const { execute: submitForm, isLoading: isSubmittingAPI } = useSubmit(
-    (id: string, data: any) => aprovacaoService.enviarAprovacao(id, data),
-    {
-      onSuccess: () => {
-        const targetStatus = formData.decisao === 'aprovar' ? 'Aprovado' : 'Rejeitado'
-        toast.success(
-          formData.decisao === 'aprovar'
-            ? 'Candidato aprovado e entrevista agendada com sucesso!'
-            : 'Candidato rejeitado.',
-          { duration: 4000 },
-        )
-        setCandidatos((prev) =>
-          prev.map((c) => (c.id === displayId ? { ...c, status: targetStatus } : c)),
-        )
-        clearDraft()
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+  const { execute: submitForm, isLoading: isSubmittingAPI } = useAprovacao({
+    onSuccess: () => {
+      const targetStatus = formData.decisao === 'aprovar' ? 'Aprovado' : 'Rejeitado'
+      toast.success(
+        formData.decisao === 'aprovar'
+          ? 'Candidato aprovado e entrevista agendada com sucesso!'
+          : 'Candidato rejeitado.',
+        { duration: 4000 },
+      )
+      setCandidatos((prev) =>
+        prev.map((c) => (c.id === displayId ? { ...c, status: targetStatus } : c)),
+      )
+      clearDraft()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
 
-        setTimeout(() => {
-          setCandidatos((prev) => prev.filter((c) => c.id !== displayId))
-          setDisplayId(null)
-          setSelectedId(null)
-        }, 1000)
-      },
+      setTimeout(() => {
+        setCandidatos((prev) => prev.filter((c) => c.id !== displayId))
+        setDisplayId(null)
+        setSelectedId(null)
+      }, 1000)
     },
-  )
+  })
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()

@@ -1,56 +1,100 @@
 onRecordValidate((e) => {
-  const { record } = e
-  const errors = {}
+  const record = e.record
 
-  const likertStr = record.getString('respostasLikert')
-  if (likertStr) {
-    try {
-      const arr = JSON.parse(likertStr)
-      if (
-        !Array.isArray(arr) ||
-        arr.length !== 5 ||
-        !arr.every((n) => typeof n === 'number' && n >= 1 && n <= 5)
-      ) {
-        errors['respostasLikert'] = new ValidationError(
-          'invalid_format',
-          'Deve conter 5 respostas entre 1 e 5.',
-        )
+  const respostasLikert = record.get('respostasLikert')
+  if (respostasLikert && typeof respostasLikert === 'object') {
+    let count = 0
+    for (let key in respostasLikert) {
+      const val = Number(respostasLikert[key].valor || respostasLikert[key])
+      if (val < 1 || val > 5) {
+        throw new BadRequestError('Dados inválidos', {
+          respostasLikert: new ValidationError(
+            'invalid_range',
+            'Valores Likert devem ser entre 1 e 5.',
+          ),
+        })
       }
-    } catch (err) {
-      errors['respostasLikert'] = new ValidationError('invalid_format', 'Deve ser um JSON válido.')
+      count++
+    }
+    if (Object.keys(respostasLikert).length > 0 && count !== 5) {
+      throw new BadRequestError('Dados inválidos', {
+        respostasLikert: new ValidationError(
+          'invalid_count',
+          'Devem ser enviadas exatamente 5 respostas Likert.',
+        ),
+      })
     }
   }
 
-  const abertasStr = record.getString('respostasAbertas')
-  if (abertasStr) {
-    try {
-      const arr = JSON.parse(abertasStr)
-      if (
-        !Array.isArray(arr) ||
-        arr.length !== 4 ||
-        !arr.every((s) => typeof s === 'string' && s.length >= 10)
-      ) {
-        errors['respostasAbertas'] = new ValidationError(
-          'invalid_format',
-          'Deve conter 4 respostas com pelo menos 10 caracteres cada.',
-        )
+  const respostasAbertas = record.get('respostasAbertas')
+  if (respostasAbertas && typeof respostasAbertas === 'object') {
+    let count = 0
+    for (let key in respostasAbertas) {
+      const val = respostasAbertas[key]
+      if (val && String(val).length < 10) {
+        throw new BadRequestError('Dados inválidos', {
+          respostasAbertas: new ValidationError(
+            'min_length',
+            'Respostas abertas devem ter pelo menos 10 caracteres.',
+          ),
+        })
       }
-    } catch (err) {
-      errors['respostasAbertas'] = new ValidationError('invalid_format', 'Deve ser um JSON válido.')
+      count++
+    }
+    if (Object.keys(respostasAbertas).length > 0 && count !== 4) {
+      throw new BadRequestError('Dados inválidos', {
+        respostasAbertas: new ValidationError(
+          'invalid_count',
+          'Devem ser enviadas exatamente 4 respostas abertas.',
+        ),
+      })
     }
   }
 
+  const notaAlinhamento = Number(record.get('notaAlinhamento') || 0)
+  const notaCompetencia = Number(record.get('notaCompetencia') || 0)
   const recomendacao = record.getString('recomendacao')
+  const justificativaAlinhamento = record.getString('justificativaAlinhamento')
+  const justificativaCompetencia = record.getString('justificativaCompetencia')
   const observacoes = record.getString('observacoes')
-  if (recomendacao === 'Não Recomendado' && !observacoes) {
-    errors['observacoes'] = new ValidationError(
-      'required',
-      'Observações são obrigatórias quando não recomendado.',
-    )
+
+  if (record.get('notaAlinhamento') !== null && (notaAlinhamento < 0 || notaAlinhamento > 10)) {
+    throw new BadRequestError('Dados inválidos', {
+      notaAlinhamento: new ValidationError('invalid_range', 'Nota deve ser entre 0 e 10.'),
+    })
   }
 
-  if (Object.keys(errors).length > 0) {
-    throw new BadRequestError('Dados inválidos', errors)
+  if (record.get('notaCompetencia') !== null && (notaCompetencia < 0 || notaCompetencia > 10)) {
+    throw new BadRequestError('Dados inválidos', {
+      notaCompetencia: new ValidationError('invalid_range', 'Nota deve ser entre 0 e 10.'),
+    })
+  }
+
+  if (
+    (notaAlinhamento > 0 || notaCompetencia > 0) &&
+    !justificativaAlinhamento &&
+    !justificativaCompetencia &&
+    !observacoes
+  ) {
+    throw new BadRequestError('Dados inválidos', {
+      justificativaAlinhamento: new ValidationError(
+        'required',
+        'Justificativa é obrigatória quando as notas são preenchidas.',
+      ),
+    })
+  }
+
+  if (
+    (recomendacao === 'Não Recomendado' || recomendacao === 'Não recomendo') &&
+    !observacoes &&
+    !justificativaAlinhamento
+  ) {
+    throw new BadRequestError('Dados inválidos', {
+      observacoes: new ValidationError(
+        'required',
+        'Observações são obrigatórias para candidatos não recomendados.',
+      ),
+    })
   }
 
   e.next()

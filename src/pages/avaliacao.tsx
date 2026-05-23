@@ -36,7 +36,8 @@ import { Loader2 } from 'lucide-react'
 import { CandidatoAvaliacao } from '@/types'
 import { avaliacaoService } from '@/services/avaliacao-service'
 import { cn } from '@/lib/utils'
-import { useSubmit } from '@/hooks/use-submit'
+import { useAvaliacaoRH } from '@/hooks/use-avaliacao-rh'
+import { useRealtime } from '@/hooks/use-realtime'
 
 const getBadgeStyles = (status: string) => {
   switch (status) {
@@ -106,8 +107,8 @@ export default function AvaliacaoPage() {
 
   const blocker = useUnsavedChanges(isDirty)
 
-  const loadData = async () => {
-    setLoading(true)
+  const loadData = async (showLoading = true) => {
+    if (showLoading) setLoading(true)
     try {
       const data = await avaliacaoService.getCandidatos()
       setCandidatos(data)
@@ -121,6 +122,14 @@ export default function AvaliacaoPage() {
   useEffect(() => {
     loadData()
   }, [])
+
+  useRealtime('candidates', () => {
+    loadData(false)
+  })
+
+  useRealtime('avaliacoes', () => {
+    loadData(false)
+  })
 
   const handleSelectCandidate = (id: string) => {
     if (id === displayId) return
@@ -166,25 +175,22 @@ export default function AvaliacaoPage() {
     formData.recomendacao &&
     (!isJustificativaRequerida || formData.justificativa.length > 0)
 
-  const { execute: submitForm, isLoading: isSubmittingAPI } = useSubmit(
-    (id: string, data: any) => avaliacaoService.enviarAvaliacao(id, data),
-    {
-      successMessage: 'Avaliação enviada com sucesso!',
-      onSuccess: () => {
-        setCandidatos((prev) =>
-          prev.map((c) => (c.id === displayId ? { ...c, status: 'Avaliação Concluída' } : c)),
-        )
-        clearDraft()
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+  const { execute: submitForm, isLoading: isSubmittingAPI } = useAvaliacaoRH({
+    successMessage: 'Avaliação enviada com sucesso!',
+    onSuccess: () => {
+      setCandidatos((prev) =>
+        prev.map((c) => (c.id === displayId ? { ...c, status: 'Avaliação Concluída' } : c)),
+      )
+      clearDraft()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
 
-        setTimeout(() => {
-          setCandidatos((prev) => prev.filter((c) => c.id !== displayId))
-          setDisplayId(null)
-          setSelectedId(null)
-        }, 1000)
-      },
+      setTimeout(() => {
+        setCandidatos((prev) => prev.filter((c) => c.id !== displayId))
+        setDisplayId(null)
+        setSelectedId(null)
+      }, 1000)
     },
-  )
+  })
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()

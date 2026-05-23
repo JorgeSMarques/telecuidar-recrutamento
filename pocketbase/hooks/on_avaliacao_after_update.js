@@ -1,29 +1,28 @@
 onRecordAfterUpdateSuccess((e) => {
-  const { record } = e
-  const original = record.original()
+  const record = e.record
+  const candidateId = record.getString('candidatoId')
+  if (!candidateId) return e.next()
 
-  const notaAtual = record.getString('notaAlinhamento')
-  const notaAntiga = original.getString('notaAlinhamento')
+  try {
+    const candidate = $app.findRecordById('candidates', candidateId)
 
-  if (notaAtual !== '' && notaAtual !== notaAntiga) {
-    const candidatoId = record.getString('candidatoId')
-    if (candidatoId) {
-      try {
-        const candidate = $app.findRecordById('candidates', candidatoId)
-        const recomendacao = record.getString('recomendacao')
-
-        if (recomendacao === 'Recomendado') {
-          candidate.set('status', 'Aprovação Diretor Pendente')
-        } else if (recomendacao === 'Não Recomendado') {
-          candidate.set('status', 'Rejeitado')
-        } else {
-          candidate.set('status', 'Avaliação RH Concluída')
-        }
-        $app.saveNoValidate(candidate)
-      } catch (err) {
-        $app.logger().error('Erro ao atualizar candidato na avaliacao rh', 'error', err.message)
-      }
+    const recomendacao = record.getString('recomendacao')
+    if (
+      recomendacao === 'Recomendado' ||
+      recomendacao === 'Recomendo fortemente' ||
+      recomendacao === 'Recomendo com ressalvas'
+    ) {
+      candidate.set('status', 'Aprovação Diretor Pendente')
+      $app.save(candidate)
+      $app.logger().info('Mocked communication sent: avaliacao_enviada', 'candidateId', candidateId)
+    } else if (recomendacao === 'Não Recomendado' || recomendacao === 'Não recomendo') {
+      candidate.set('status', 'Rejeitado')
+      $app.save(candidate)
+      $app.logger().info('Mocked communication sent: rejeicao', 'candidateId', candidateId)
     }
+  } catch (err) {
+    $app.logger().error('Erro ao atualizar candidato após avaliação RH', 'candidateId', candidateId)
   }
+
   e.next()
 }, 'avaliacoes')
