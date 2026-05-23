@@ -20,7 +20,7 @@ export function ResumoTab({ onEdit, onSubmit, loading }: ResumoTabProps) {
   const values = getValues()
 
   return (
-    <div className="space-y-6 mt-4 text-sm animate-fade-in-up">
+    <div className="space-y-6 mt-4 text-sm">
       {!isValid && isSubmitted && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

@@ -53,16 +53,18 @@ export default function CandidatoDashboard() {
 
   if (loading) {
     return (
-      <div className="flex-1 p-6 space-y-8 h-full overflow-hidden">
-        <Skeleton className="h-8 w-64 animate-pulse" />
-        <div className="flex flex-col md:flex-row gap-8">
-          <div className="w-full md:w-[60%] space-y-4">
-            <Skeleton className="h-[200px] w-full animate-pulse" />
-            <Skeleton className="h-[200px] w-full animate-pulse" />
+      <div className="flex-1 p-4 md:p-6 lg:p-8 space-y-8 h-full overflow-hidden">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-10 gap-8">
+          <div className="col-span-1 md:col-span-1 lg:col-span-3 space-y-4">
+            <Skeleton className="h-[400px] w-full" />
           </div>
-          <div className="w-full md:w-[40%] space-y-4 hidden md:block">
-            <Skeleton className="h-32 w-full animate-pulse" />
-            <Skeleton className="h-32 w-full animate-pulse" />
+          <div className="col-span-1 md:col-span-1 lg:col-span-5 space-y-4">
+            <Skeleton className="h-[400px] w-full" />
+          </div>
+          <div className="hidden lg:block lg:col-span-2 space-y-4">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
           </div>
         </div>
       </div>
@@ -70,8 +72,8 @@ export default function CandidatoDashboard() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-muted/10">
-      <div className="border-b bg-background/50 backdrop-blur-sm sticky top-0 z-20 px-4 py-4 md:px-6">
+    <div className="flex-1 flex flex-col h-full bg-background">
+      <div className="border-b bg-background/50 backdrop-blur-sm sticky top-0 z-20 px-4 md:px-6 lg:px-8 py-4 mb-8">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -83,34 +85,34 @@ export default function CandidatoDashboard() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-        <h1 className="text-2xl font-bold tracking-tight mt-2">Meu Processo de Seleção</h1>
+        <h1 className="text-[2rem] font-bold tracking-tight mt-2">Meu Processo de Seleção</h1>
       </div>
 
-      <div className="flex-1 p-4 md:p-6 overflow-auto">
-        <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row gap-8">
-          <div className="w-full md:w-[60%] flex flex-col gap-8">
+      <div className="flex-1 px-4 md:px-6 lg:px-8 overflow-auto pb-8">
+        <div className="max-w-[1400px] mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-10 gap-8">
+          <div className="col-span-1 md:col-span-1 lg:col-span-3 flex flex-col gap-8">
             <section aria-labelledby="timeline-heading">
               <h2 id="timeline-heading" className="sr-only">
                 Linha do Tempo do Processo
               </h2>
               <Timeline steps={steps} />
             </section>
-
-            <div className="border-t pt-8">
-              {currentStage === 2 && <InteresseForm onSuccess={() => setCurrentStage(3)} />}
-              {currentStage === 3 && <AvaliacaoForm onSuccess={() => setCurrentStage(4)} />}
-              {currentStage >= 4 && (
-                <div className="text-center p-8 border rounded-lg bg-background shadow-sm animate-fade-in-up">
-                  <h3 className="font-semibold text-lg mb-2">Etapa Concluída</h3>
-                  <p className="text-muted-foreground">
-                    Sua participação está sendo avaliada. Acompanhe a linha do tempo para novidades.
-                  </p>
-                </div>
-              )}
-            </div>
           </div>
 
-          <aside className="w-full md:w-[40%] hidden md:block sticky top-6 self-start">
+          <div className="col-span-1 md:col-span-1 lg:col-span-5 flex flex-col gap-8">
+            {currentStage === 2 && <InteresseForm onSuccess={() => setCurrentStage(3)} />}
+            {currentStage === 3 && <AvaliacaoForm onSuccess={() => setCurrentStage(4)} />}
+            {currentStage >= 4 && (
+              <div className="text-center p-8 border rounded-[var(--radius)] bg-card shadow-sm animate-fade-in-up">
+                <h3 className="font-semibold text-[1rem] mb-2">Etapa Concluída</h3>
+                <p className="text-muted-foreground text-[0.875rem]">
+                  Sua participação está sendo avaliada. Acompanhe a linha do tempo para novidades.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <aside className="hidden lg:block lg:col-span-2 sticky top-[8rem] max-h-[calc(100vh-10rem)] overflow-y-auto self-start">
             <StatusSummary />
           </aside>
         </div>

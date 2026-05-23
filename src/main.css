@@ -144,6 +144,35 @@
   .animate-slide-in {
     animation: slide-in-from-left 0.3s ease-out;
   }
+  .animate-tab-fade-in {
+    animation: fade-in 300ms ease-out forwards;
+  }
+  [data-sonner-toast] {
+    animation: fade-in-slide-up-toast 300ms ease-out forwards !important;
+  }
+  @keyframes fade-in-slide-up-toast {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-timeline-step {
+    animation: fade-in-slide-up 400ms ease-out forwards;
+  }
+  @keyframes fade-in-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 @layer base {

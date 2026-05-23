@@ -20,16 +20,16 @@ export function ValoresTab() {
   } = useFormContext<AvaliacaoFormData>()
 
   return (
-    <div className="space-y-8 mt-4 animate-fade-in-up">
+    <div className="space-y-8 mt-4">
       {VALORES_FIELDS.map((vField) => {
         const error = errors.valores?.[vField.id]?.valor
         return (
           <fieldset
             key={vField.id}
-            className="border p-4 rounded-md space-y-4"
+            className="border p-4 rounded-[var(--radius)] space-y-4 bg-card text-card-foreground"
             aria-invalid={!!error}
           >
-            <legend className="font-semibold px-2">
+            <legend className="font-semibold text-[1rem] px-2">
               {vField.label} <span className="text-destructive">*</span>
             </legend>
             <Controller
@@ -39,13 +39,14 @@ export function ValoresTab() {
                 <RadioGroup
                   onValueChange={(v) => field.onChange(Number(v))}
                   value={field.value ? String(field.value) : undefined}
-                  className="flex gap-4"
+                  className="flex gap-6 flex-wrap"
                   aria-required="true"
+                  aria-describedby={error ? `error-${vField.id}` : undefined}
                 >
                   {[1, 2, 3, 4, 5].map((n) => (
-                    <div key={n} className="flex items-center space-x-1">
+                    <div key={n} className="flex items-center space-x-2">
                       <RadioGroupItem value={String(n)} id={`${vField.id}-${n}`} />
-                      <Label htmlFor={`${vField.id}-${n}`} className="cursor-pointer">
+                      <Label htmlFor={`${vField.id}-${n}`} className="cursor-pointer mb-0">
                         {n}
                       </Label>
                     </div>
@@ -53,8 +54,15 @@ export function ValoresTab() {
                 </RadioGroup>
               )}
             />
-            {error && <span className="text-sm text-destructive">{error.message}</span>}
-            <div className="space-y-2">
+            {error && (
+              <span
+                id={`error-${vField.id}`}
+                className="text-[0.75rem] text-destructive block mt-1"
+              >
+                {error.message}
+              </span>
+            )}
+            <div className="space-y-2 pt-2">
               <Label htmlFor={`exp-${vField.id}`}>Explique sua resposta (opcional)</Label>
               <Textarea
                 id={`exp-${vField.id}`}

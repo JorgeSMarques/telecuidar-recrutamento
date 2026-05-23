@@ -1,4 +1,4 @@
-import { Check, Clock, AlertCircle, X, ArrowRight } from 'lucide-react'
+import { CheckCircle, Clock, AlertCircle, X, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TimelineStep } from '@/types'
 
@@ -8,10 +8,9 @@ interface TimelineProps {
 
 export function Timeline({ steps }: TimelineProps) {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-6 relative">
-        <div className="absolute top-4 bottom-4 left-[21px] w-[2px] bg-border z-0" />
-        {steps.map((step) => {
+    <div className="pl-7">
+      <div className="flex flex-col relative">
+        {steps.map((step, index) => {
           const isCompleted = step.status === 'completed'
           const isActive = step.status === 'active'
           const isWaiting = step.status === 'waiting'
@@ -21,30 +20,38 @@ export function Timeline({ steps }: TimelineProps) {
           return (
             <div
               key={step.id}
-              className="relative z-10 flex items-start gap-4"
+              className={cn(
+                'relative flex flex-col pb-8 pl-8 border-l-[4px] transition-colors duration-200 animate-timeline-step opacity-0',
+                isActive
+                  ? 'border-primary bg-primary/5'
+                  : isCompleted
+                    ? 'border-primary/60'
+                    : isRejected
+                      ? 'border-destructive'
+                      : 'border-border',
+              )}
+              style={{ animationDelay: `${index * 50}ms` }}
               aria-current={isActive ? 'step' : undefined}
             >
               <div
                 className={cn(
-                  'w-11 h-11 rounded-full flex items-center justify-center border-2 bg-background shrink-0 transition-colors duration-200',
-                  isCompleted
-                    ? 'border-green-500 text-green-500'
-                    : isActive
-                      ? 'border-primary text-primary'
+                  'absolute top-0 flex items-center justify-center rounded-full w-10 h-10 shadow-sm transition-colors duration-200 -left-[1.375rem]',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : isCompleted
+                      ? 'bg-primary/60 text-primary-foreground'
                       : isRejected
-                        ? 'border-red-500 text-red-500'
-                        : isBlocked
-                          ? 'border-yellow-500 text-yellow-500'
-                          : 'border-muted-foreground text-muted-foreground',
+                        ? 'bg-destructive text-destructive-foreground'
+                        : 'bg-background border-2 border-muted-foreground text-muted-foreground',
                 )}
               >
-                {isCompleted && <Check className="w-5 h-5" />}
+                {isCompleted && <CheckCircle className="w-5 h-5" />}
                 {isActive && <ArrowRight className="w-5 h-5" />}
                 {isWaiting && <Clock className="w-5 h-5" />}
                 {isBlocked && <AlertCircle className="w-5 h-5" />}
                 {isRejected && <X className="w-5 h-5" />}
               </div>
-              <div className="pt-2">
+              <div className="-mt-1">
                 <h4 className={cn('font-medium', isActive ? 'text-primary font-bold' : '')}>
                   {step.id}. {step.title}
                 </h4>

@@ -18,7 +18,7 @@ export function CompetenciaTab() {
   } = useFormContext<AvaliacaoFormData>()
 
   return (
-    <div className="space-y-6 mt-4 animate-fade-in-up">
+    <div className="space-y-6 mt-4">
       {COMPETENCIA_FIELDS.map((cField) => {
         const val = watch(`competencia.${cField.id}`) || ''
         const error = errors.competencia?.[cField.id]
@@ -34,11 +34,18 @@ export function CompetenciaTab() {
               maxLength={500}
               aria-invalid={!!error}
               aria-required="true"
+              aria-describedby={error ? `error-${cField.id}` : undefined}
               className="min-h-24"
             />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              {error ? <span className="text-destructive">{error.message}</span> : <span />}
-              <span>{val.length}/500</span>
+            <div className="flex justify-between text-[0.75rem] mt-1">
+              {error ? (
+                <span id={`error-${cField.id}`} className="text-destructive">
+                  {error.message}
+                </span>
+              ) : (
+                <span />
+              )}
+              <span className="opacity-60 text-right w-full">{val.length}/500</span>
             </div>
           </div>
         )

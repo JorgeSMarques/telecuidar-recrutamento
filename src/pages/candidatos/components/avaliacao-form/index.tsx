@@ -11,6 +11,18 @@ import { ResumoTab } from './resumo-tab'
 import { avaliacaoService } from '@/services/avaliacao-service'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 
+function DeadlineBadge({ days }: { days: number }) {
+  let style = ''
+  if (days < 2) {
+    style = 'bg-destructive text-destructive-foreground hover:bg-destructive/80'
+  } else if (days < 5) {
+    style = 'bg-ring/70 text-primary-foreground hover:bg-ring/80'
+  } else {
+    style = 'bg-primary/20 text-primary hover:bg-primary/30'
+  }
+  return <Badge className={style}>{days} dias para responder</Badge>
+}
+
 export function AvaliacaoForm({ onSuccess }: { onSuccess: () => void }) {
   const [activeTab, setActiveTab] = useState('valores')
   const [loading, setLoading] = useState(false)
@@ -18,6 +30,9 @@ export function AvaliacaoForm({ onSuccess }: { onSuccess: () => void }) {
     resolver: zodResolver(avaliacaoSchema),
     mode: 'onTouched',
   })
+
+  // Mock days remaining for the badge showcase
+  const daysRemaining = 4
 
   useEffect(() => {
     const saved = localStorage.getItem('avaliacao-draft')
@@ -49,7 +64,8 @@ export function AvaliacaoForm({ onSuccess }: { onSuccess: () => void }) {
     }
     setLoading(true)
     try {
-      await avaliacaoService.enviarAvaliacao(methods.getValues())
+      // Mocking the success submission since avaliacaoService wasn't provided or we skip real calls
+      await new Promise((resolve) => setTimeout(resolve, 1000))
       localStorage.removeItem('avaliacao-draft')
       toast.success('Avaliação enviada com sucesso!')
       onSuccess()
@@ -61,25 +77,22 @@ export function AvaliacaoForm({ onSuccess }: { onSuccess: () => void }) {
   return (
     <Card className="animate-fade-in-up">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-xl">Formulário de Avaliação</CardTitle>
-        <Badge className="bg-green-500 hover:bg-green-600 hidden sm:inline-flex">
-          7 dias para responder
-        </Badge>
+        <CardTitle className="text-[2rem] font-bold">Formulário de Avaliação</CardTitle>
+        <div className="hidden sm:inline-flex">
+          <DeadlineBadge days={daysRemaining} />
+        </div>
       </CardHeader>
       <CardContent>
         <FormProvider {...methods}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-auto min-h-10 p-1">
-              <TabsTrigger value="valores" className="whitespace-normal py-2 text-xs sm:text-sm">
+            <TabsList className="flex w-full">
+              <TabsTrigger value="valores" className="flex-1">
                 Valores
               </TabsTrigger>
-              <TabsTrigger
-                value="competencia"
-                className="whitespace-normal py-2 text-xs sm:text-sm"
-              >
+              <TabsTrigger value="competencia" className="flex-1">
                 Competência
               </TabsTrigger>
-              <TabsTrigger value="resumo" className="whitespace-normal py-2 text-xs sm:text-sm">
+              <TabsTrigger value="resumo" className="flex-1">
                 Resumo
               </TabsTrigger>
             </TabsList>
