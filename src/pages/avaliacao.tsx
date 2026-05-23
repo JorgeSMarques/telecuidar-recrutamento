@@ -27,10 +27,12 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { ConditionalField } from '@/components/ui/dynamic-form'
+import { Loader2 } from 'lucide-react'
 
 import { CandidatoAvaliacao } from '@/types'
 import { avaliacaoService } from '@/services/avaliacao-service'
 import { cn } from '@/lib/utils'
+import { useSubmit } from '@/hooks/use-submit'
 
 const getBadgeStyles = (status: string) => {
   switch (status) {
@@ -165,25 +167,46 @@ export default function AvaliacaoPage() {
     formData.recomendacao &&
     (!isJustificativaRequerida || formData.justificativa.length > 0)
 
-  const handleSubmit = async () => {
-    if (!displayId || !isValid) return
-    try {
-      await avaliacaoService.enviarAvaliacao(displayId, formData)
-      toast.success('Avaliação enviada com sucesso!')
+  const { execute: submitForm, isLoading: isSubmittingAPI } = useSubmit(
+    (id: string, data: any) => avaliacaoService.enviarAvaliacao(id, data),
+    {
+      successMessage: 'Avaliação enviada com sucesso!',
+      onSuccess: () => {
+        setCandidatos((prev) =>
+          prev.map((c) => (c.id === displayId ? { ...c, status: 'Avaliação Concluída' } : c)),
+        )
+        localStorage.removeItem(`avaliacao-draft-${displayId}`)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
 
-      setCandidatos((prev) =>
-        prev.map((c) => (c.id === displayId ? { ...c, status: 'Avaliação Concluída' } : c)),
-      )
-      localStorage.removeItem(`avaliacao-draft-${displayId}`)
+        setTimeout(() => {
+          setCandidatos((prev) => prev.filter((c) => c.id !== displayId))
+          setDisplayId(null)
+          setSelectedId(null)
+        }, 1000)
+      },
+    },
+  )
 
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!displayId) return
+    if (!isValid) {
+      toast.error('Corrija os erros abaixo antes de enviar', { duration: 6000 })
       setTimeout(() => {
-        setCandidatos((prev) => prev.filter((c) => c.id !== displayId))
-        setDisplayId(null)
-        setSelectedId(null)
-      }, 1000)
-    } catch (error) {
-      toast.error('Erro ao enviar avaliação')
+        const errElement = document.querySelector(
+          '.text-destructive, [aria-invalid="true"], .border-destructive',
+        )
+        if (errElement) {
+          errElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          const input = errElement
+            .closest('fieldset, div')
+            ?.querySelector('input, select, textarea') as HTMLElement
+          if (input) input.focus()
+        }
+      }, 300)
+      return
     }
+    submitForm(displayId, formData)
   }
 
   return (
@@ -464,214 +487,219 @@ export default function AvaliacaoPage() {
                     </TabsContent>
 
                     <TabsContent value="avaliacao" className="mt-6 animate-tab-fade-in">
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault()
-                          handleSubmit()
-                        }}
-                      >
-                        <div className="mb-6">
-                          <legend className="text-base font-semibold">
-                            Formulário de Avaliação RH
-                          </legend>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Preencha com critério. Os dados serão enviados ao Diretor Técnico.
-                          </p>
-                        </div>
-
-                        <div className="space-y-6">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <fieldset className="space-y-2">
-                              <Label htmlFor="notaValores" className="font-medium">
-                                Alinhamento com Valores (0-10){' '}
-                                <span className="text-destructive">*</span>
-                              </Label>
-                              <Input
-                                id="notaValores"
-                                type="number"
-                                min="0"
-                                max="10"
-                                step="0.5"
-                                placeholder="Ex: 8.5"
-                                value={formData.notaValores}
-                                onChange={(e) =>
-                                  setFormData((p) => ({ ...p, notaValores: e.target.value }))
-                                }
-                                aria-required="true"
-                                className="min-h-[44px]"
-                              />
-                            </fieldset>
-                            <fieldset className="space-y-2">
-                              <Label htmlFor="notaCompetencia" className="font-medium">
-                                Competência Técnica (0-10){' '}
-                                <span className="text-destructive">*</span>
-                              </Label>
-                              <Input
-                                id="notaCompetencia"
-                                type="number"
-                                min="0"
-                                max="10"
-                                step="0.5"
-                                placeholder="Ex: 9.0"
-                                value={formData.notaCompetencia}
-                                onChange={(e) =>
-                                  setFormData((p) => ({ ...p, notaCompetencia: e.target.value }))
-                                }
-                                aria-required="true"
-                                className="min-h-[44px]"
-                              />
-                            </fieldset>
+                      <form onSubmit={handleFormSubmit}>
+                        <fieldset
+                          disabled={isSubmittingAPI}
+                          className="border-0 p-0 m-0 min-w-0 w-full"
+                        >
+                          <div className="mb-6">
+                            <legend className="text-base font-semibold">
+                              Formulário de Avaliação RH
+                            </legend>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Preencha com critério. Os dados serão enviados ao Diretor Técnico.
+                            </p>
                           </div>
 
-                          <fieldset className="space-y-2">
-                            <Label htmlFor="recomendacao" className="font-medium">
-                              Recomendação Final <span className="text-destructive">*</span>
-                            </Label>
-                            <Select
-                              value={formData.recomendacao}
-                              onValueChange={(val) =>
-                                setFormData((p) => ({ ...p, recomendacao: val }))
+                          <div className="space-y-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                              <fieldset className="space-y-2">
+                                <Label htmlFor="notaValores" className="font-medium">
+                                  Alinhamento com Valores (0-10){' '}
+                                  <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                  id="notaValores"
+                                  type="number"
+                                  min="0"
+                                  max="10"
+                                  step="0.5"
+                                  placeholder="Ex: 8.5"
+                                  value={formData.notaValores}
+                                  onChange={(e) =>
+                                    setFormData((p) => ({ ...p, notaValores: e.target.value }))
+                                  }
+                                  aria-required="true"
+                                  className="min-h-[44px]"
+                                />
+                              </fieldset>
+                              <fieldset className="space-y-2">
+                                <Label htmlFor="notaCompetencia" className="font-medium">
+                                  Competência Técnica (0-10){' '}
+                                  <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                  id="notaCompetencia"
+                                  type="number"
+                                  min="0"
+                                  max="10"
+                                  step="0.5"
+                                  placeholder="Ex: 9.0"
+                                  value={formData.notaCompetencia}
+                                  onChange={(e) =>
+                                    setFormData((p) => ({ ...p, notaCompetencia: e.target.value }))
+                                  }
+                                  aria-required="true"
+                                  className="min-h-[44px]"
+                                />
+                              </fieldset>
+                            </div>
+
+                            <fieldset className="space-y-2">
+                              <Label htmlFor="recomendacao" className="font-medium">
+                                Recomendação Final <span className="text-destructive">*</span>
+                              </Label>
+                              <Select
+                                value={formData.recomendacao}
+                                onValueChange={(val) =>
+                                  setFormData((p) => ({ ...p, recomendacao: val }))
+                                }
+                              >
+                                <SelectTrigger
+                                  id="recomendacao"
+                                  aria-required="true"
+                                  className="min-h-[44px]"
+                                >
+                                  <SelectValue placeholder="Selecione..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Recomendo fortemente">
+                                    Recomendo fortemente
+                                  </SelectItem>
+                                  <SelectItem value="Recomendo com ressalvas">
+                                    Recomendo com ressalvas
+                                  </SelectItem>
+                                  <SelectItem value="Não recomendo">Não recomendo</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </fieldset>
+
+                            <ConditionalField show={formData.recomendacao === 'Não recomendo'}>
+                              <fieldset className="space-y-2 animate-fade-in">
+                                <Label htmlFor="justificativa" className="font-medium block">
+                                  Justificativa Obrigatória{' '}
+                                  <span className="text-destructive">*</span>
+                                </Label>
+                                <Textarea
+                                  id="justificativa"
+                                  placeholder="Descreva detalhadamente o motivo da não recomendação..."
+                                  maxLength={300}
+                                  value={formData.justificativa}
+                                  onChange={(e) =>
+                                    setFormData((p) => ({ ...p, justificativa: e.target.value }))
+                                  }
+                                  aria-required="true"
+                                  aria-invalid={
+                                    formData.justificativa.length > 0 && !isJustificativaValid
+                                  }
+                                  aria-describedby={
+                                    formData.justificativa.length > 0 && !isJustificativaValid
+                                      ? 'justificativa-error'
+                                      : undefined
+                                  }
+                                  className={
+                                    formData.justificativa.length > 0 && !isJustificativaValid
+                                      ? 'border-destructive focus-visible:ring-destructive'
+                                      : ''
+                                  }
+                                />
+                                <div className="flex justify-between items-start mt-1 h-5">
+                                  {formData.justificativa.length > 0 && !isJustificativaValid ? (
+                                    <span
+                                      id="justificativa-error"
+                                      className="text-destructive text-xs font-medium animate-fade-in"
+                                    >
+                                      Mínimo de 10 caracteres.
+                                    </span>
+                                  ) : (
+                                    <span />
+                                  )}
+                                  <span
+                                    className={cn(
+                                      'text-xs font-medium transition-colors w-full text-right block',
+                                      formData.justificativa.length >= 300
+                                        ? 'text-destructive'
+                                        : formData.justificativa.length >= 240
+                                          ? 'text-ring'
+                                          : 'opacity-60',
+                                    )}
+                                  >
+                                    {formData.justificativa.length}/300
+                                  </span>
+                                </div>
+                              </fieldset>
+                            </ConditionalField>
+
+                            <ConditionalField
+                              show={
+                                formData.recomendacao !== 'Não recomendo' &&
+                                formData.recomendacao !== ''
                               }
                             >
-                              <SelectTrigger
-                                id="recomendacao"
-                                aria-required="true"
-                                className="min-h-[44px]"
-                              >
-                                <SelectValue placeholder="Selecione..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Recomendo fortemente">
-                                  Recomendo fortemente
-                                </SelectItem>
-                                <SelectItem value="Recomendo com ressalvas">
-                                  Recomendo com ressalvas
-                                </SelectItem>
-                                <SelectItem value="Não recomendo">Não recomendo</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </fieldset>
-
-                          <ConditionalField show={formData.recomendacao === 'Não recomendo'}>
-                            <fieldset className="space-y-2 animate-fade-in">
-                              <Label htmlFor="justificativa" className="font-medium block">
-                                Justificativa Obrigatória{' '}
-                                <span className="text-destructive">*</span>
-                              </Label>
-                              <Textarea
-                                id="justificativa"
-                                placeholder="Descreva detalhadamente o motivo da não recomendação..."
-                                maxLength={300}
-                                value={formData.justificativa}
-                                onChange={(e) =>
-                                  setFormData((p) => ({ ...p, justificativa: e.target.value }))
-                                }
-                                aria-required="true"
-                                aria-invalid={
-                                  formData.justificativa.length > 0 && !isJustificativaValid
-                                }
-                                aria-describedby={
-                                  formData.justificativa.length > 0 && !isJustificativaValid
-                                    ? 'justificativa-error'
-                                    : undefined
-                                }
-                                className={
-                                  formData.justificativa.length > 0 && !isJustificativaValid
-                                    ? 'border-destructive focus-visible:ring-destructive'
-                                    : ''
-                                }
-                              />
-                              <div className="flex justify-between items-start mt-1 h-5">
-                                {formData.justificativa.length > 0 && !isJustificativaValid ? (
+                              <fieldset className="space-y-2 animate-fade-in">
+                                <Label htmlFor="justificativa" className="font-medium block">
+                                  Justificativa Detalhada (Opcional)
+                                </Label>
+                                <Textarea
+                                  id="justificativa"
+                                  placeholder="Detalhes adicionais sobre as notas atribuídas..."
+                                  maxLength={500}
+                                  value={formData.justificativa}
+                                  onChange={(e) =>
+                                    setFormData((p) => ({ ...p, justificativa: e.target.value }))
+                                  }
+                                  aria-required="false"
+                                  aria-invalid={
+                                    formData.justificativa.length > 0 && !isJustificativaValid
+                                  }
+                                />
+                                <div className="flex justify-end items-start mt-1 h-5">
                                   <span
-                                    id="justificativa-error"
-                                    className="text-destructive text-xs font-medium animate-fade-in"
+                                    className={cn(
+                                      'text-xs font-medium transition-colors',
+                                      formData.justificativa.length >= 500
+                                        ? 'text-destructive'
+                                        : formData.justificativa.length >= 400
+                                          ? 'text-ring'
+                                          : 'opacity-60',
+                                    )}
                                   >
-                                    Mínimo de 10 caracteres.
+                                    {formData.justificativa.length}/500
                                   </span>
-                                ) : (
-                                  <span />
-                                )}
-                                <span
-                                  className={cn(
-                                    'text-xs font-medium transition-colors w-full text-right block',
-                                    formData.justificativa.length >= 300
-                                      ? 'text-destructive'
-                                      : formData.justificativa.length >= 240
-                                        ? 'text-ring'
-                                        : 'opacity-60',
-                                  )}
-                                >
-                                  {formData.justificativa.length}/300
-                                </span>
-                              </div>
-                            </fieldset>
-                          </ConditionalField>
+                                </div>
+                              </fieldset>
+                            </ConditionalField>
+                          </div>
 
-                          <ConditionalField
-                            show={
-                              formData.recomendacao !== 'Não recomendo' &&
-                              formData.recomendacao !== ''
-                            }
-                          >
-                            <fieldset className="space-y-2 animate-fade-in">
-                              <Label htmlFor="justificativa" className="font-medium block">
-                                Justificativa Detalhada (Opcional)
-                              </Label>
-                              <Textarea
-                                id="justificativa"
-                                placeholder="Detalhes adicionais sobre as notas atribuídas..."
-                                maxLength={500}
-                                value={formData.justificativa}
-                                onChange={(e) =>
-                                  setFormData((p) => ({ ...p, justificativa: e.target.value }))
-                                }
-                                aria-required="false"
-                                aria-invalid={
-                                  formData.justificativa.length > 0 && !isJustificativaValid
-                                }
-                              />
-                              <div className="flex justify-end items-start mt-1 h-5">
-                                <span
-                                  className={cn(
-                                    'text-xs font-medium transition-colors',
-                                    formData.justificativa.length >= 500
-                                      ? 'text-destructive'
-                                      : formData.justificativa.length >= 400
-                                        ? 'text-ring'
-                                        : 'opacity-60',
-                                  )}
-                                >
-                                  {formData.justificativa.length}/500
-                                </span>
-                              </div>
-                            </fieldset>
-                          </ConditionalField>
-                        </div>
-
-                        <div className="mt-8 pt-6 border-t flex flex-col sm:flex-row justify-end gap-4">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              setDisplayId(null)
-                              setSelectedId(null)
-                            }}
-                            className="w-full sm:w-auto min-h-[44px]"
-                          >
-                            Cancelar Avaliação
-                          </Button>
-                          <Button
-                            type="submit"
-                            disabled={!isValid}
-                            className={cn(
-                              'w-full sm:w-auto min-h-[44px] transition-colors',
-                              isValid ? 'bg-green-600 hover:bg-green-700 text-white' : '',
-                            )}
-                          >
-                            Enviar ao Diretor Técnico
-                          </Button>
-                        </div>
+                          <div className="mt-8 pt-6 border-t flex flex-col sm:flex-row justify-end gap-4">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={isSubmittingAPI}
+                              onClick={() => {
+                                setDisplayId(null)
+                                setSelectedId(null)
+                              }}
+                              className="w-full sm:w-auto min-h-[44px]"
+                            >
+                              Cancelar Avaliação
+                            </Button>
+                            <Button
+                              type="submit"
+                              disabled={isSubmittingAPI}
+                              className={cn(
+                                'w-full sm:w-auto min-h-[44px] transition-colors',
+                                isValid && !isSubmittingAPI
+                                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                                  : '',
+                                isSubmittingAPI && 'cursor-not-allowed opacity-50',
+                              )}
+                            >
+                              {isSubmittingAPI && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                              {isSubmittingAPI ? 'Enviando...' : 'Enviar ao Diretor Técnico'}
+                            </Button>
+                          </div>
+                        </fieldset>
                       </form>
                     </TabsContent>
                   </Tabs>
