@@ -4,6 +4,10 @@ import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
 
+import { useDraftForm } from '@/hooks/use-draft-form'
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
+import { UnsavedChangesModal } from '@/components/unsaved-changes-modal'
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -53,7 +57,7 @@ export default function AprovacaoPage() {
   const [isFadingOut, setIsFadingOut] = useState(false)
   const [activeTab, setActiveTab] = useState('revisao')
 
-  const [formData, setFormData] = useState({
+  const defaultFormData = {
     decisao: '',
     justificativa: '',
     agendamentoData: '',
@@ -61,7 +65,41 @@ export default function AprovacaoPage() {
     agendamentoEmail: '',
     notificarCalendar: true,
     notificarWhatsapp: true,
+  }
+
+  const [formData, setFormData] = useState(defaultFormData)
+
+  const isDirty =
+    formData.decisao !== '' || formData.justificativa !== '' || formData.agendamentoData !== ''
+
+  const { isHydrated, clearDraft, handleFocus, saveImmediate } = useDraftForm({
+    key: displayId ? `aprovacao-diretor-draft-${displayId}` : null,
+    currentValues: formData,
+    setValues: setFormData,
+    adapter: {
+      toDraft: (v) => ({
+        candidatoId: displayId,
+        decisao: v.decisao,
+        justificativa: v.justificativa,
+        dataEntrevista: v.agendamentoData,
+        horarioEntrevista: v.agendamentoHora,
+        emailConfirmacao: v.agendamentoEmail,
+        criarCalendar: v.notificarCalendar,
+        enviarWhatsApp: v.notificarWhatsapp,
+      }),
+      fromDraft: (d: any) => ({
+        decisao: d.decisao || '',
+        justificativa: d.justificativa || '',
+        agendamentoData: d.dataEntrevista || '',
+        agendamentoHora: d.horarioEntrevista || '',
+        agendamentoEmail: d.emailConfirmacao || '',
+        notificarCalendar: d.criarCalendar !== false,
+        notificarWhatsapp: d.enviarWhatsApp !== false,
+      }),
+    },
   })
+
+  const blocker = useUnsavedChanges(isDirty)
 
   const loadData = async () => {
     setLoading(true)
@@ -81,7 +119,11 @@ export default function AprovacaoPage() {
 
   const handleSelectCandidate = (id: string) => {
     if (id === displayId) return
+    if (displayId && isDirty) {
+      saveImmediate(formData)
+    }
     setSelectedId(id)
+    setFormData(defaultFormData)
     if (displayId) {
       setIsFadingOut(true)
       setTimeout(() => {
@@ -102,58 +144,6 @@ export default function AprovacaoPage() {
       setFormData((prev) => ({ ...prev, agendamentoEmail: selectedCandidato.dadosPessoais.email }))
     }
   }, [selectedCandidato, formData.agendamentoEmail])
-
-  useEffect(() => {
-    if (displayId) {
-      const draftKey = `aprovacao-draft-${displayId}`
-      const saved = localStorage.getItem(draftKey)
-      if (saved) {
-        toast('Você tem um formulário de decisão em rascunho. Deseja continuar?', {
-          action: {
-            label: 'Continuar',
-            onClick: () => setFormData(JSON.parse(saved)),
-          },
-          cancel: {
-            label: 'Descartar',
-            onClick: () => {
-              localStorage.removeItem(draftKey)
-              setFormData({
-                decisao: '',
-                justificativa: '',
-                agendamentoData: '',
-                agendamentoHora: '',
-                agendamentoEmail: selectedCandidato?.dadosPessoais.email || '',
-                notificarCalendar: true,
-                notificarWhatsapp: true,
-              })
-            },
-          },
-          duration: 10000,
-        })
-      } else {
-        setFormData({
-          decisao: '',
-          justificativa: '',
-          agendamentoData: '',
-          agendamentoHora: '',
-          agendamentoEmail: selectedCandidato?.dadosPessoais.email || '',
-          notificarCalendar: true,
-          notificarWhatsapp: true,
-        })
-      }
-    }
-  }, [displayId, selectedCandidato])
-
-  useEffect(() => {
-    if (!displayId) return
-    const draftKey = `aprovacao-draft-${displayId}`
-    const timer = setTimeout(() => {
-      if (formData.decisao || formData.justificativa) {
-        localStorage.setItem(draftKey, JSON.stringify(formData))
-      }
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [formData, selectedId])
 
   const isJustificativaValid =
     formData.decisao === 'rejeitar'
@@ -187,7 +177,7 @@ export default function AprovacaoPage() {
         setCandidatos((prev) =>
           prev.map((c) => (c.id === displayId ? { ...c, status: targetStatus } : c)),
         )
-        localStorage.removeItem(`aprovacao-draft-${displayId}`)
+        clearDraft()
         window.scrollTo({ top: 0, behavior: 'smooth' })
 
         setTimeout(() => {
@@ -387,7 +377,7 @@ export default function AprovacaoPage() {
                     </TabsContent>
 
                     <TabsContent value="decisao" className="mt-6 animate-tab-fade-in">
-                      <form onSubmit={handleFormSubmit}>
+                      <form onSubmit={handleFormSubmit} onFocus={handleFocus}>
                         <fieldset
                           disabled={isSubmittingAPI}
                           className="border-0 p-0 m-0 min-w-0 w-full"
@@ -642,6 +632,7 @@ export default function AprovacaoPage() {
                               onClick={() => {
                                 setDisplayId(null)
                                 setSelectedId(null)
+                                setFormData(defaultFormData)
                               }}
                               className="w-full sm:w-auto min-h-[44px]"
                             >
@@ -672,6 +663,13 @@ export default function AprovacaoPage() {
           )}
         </div>
       </div>
+      <UnsavedChangesModal
+        blocker={blocker}
+        onDiscard={() => {
+          clearDraft()
+          setFormData(defaultFormData)
+        }}
+      />
     </div>
   )
 }

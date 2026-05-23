@@ -1,5 +1,8 @@
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { useDraftForm } from '@/hooks/use-draft-form'
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
+import { UnsavedChangesModal } from '@/components/unsaved-changes-modal'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -27,6 +30,7 @@ const schema = z
 type FormData = z.infer<typeof schema>
 
 export function InteresseForm({ onSuccess }: { onSuccess: () => void }) {
+  const defaultValues = { confirmado: false, telefone: '', mensagem: '' }
   const {
     values,
     errors,
@@ -37,13 +41,22 @@ export function InteresseForm({ onSuccess }: { onSuccess: () => void }) {
     handleSubmit,
     isSubmitting,
     setValues,
-  } = useFormValidation<FormData>({ confirmado: false, telefone: '', mensagem: '' }, schema)
+  } = useFormValidation<FormData>(defaultValues, schema)
+
+  const isDirty = JSON.stringify(values) !== JSON.stringify(defaultValues)
+  const { isHydrated, clearDraft, handleFocus } = useDraftForm({
+    key: 'manifestacao-draft',
+    currentValues: values,
+    setValues,
+  })
+  const blocker = useUnsavedChanges(isDirty)
 
   const { execute: submitForm, isLoading: isSubmittingAPI } = useSubmit(
     (data: any) => avaliacaoService.confirmarInteresse(data),
     {
       successMessage: 'Interesse confirmado! Você receberá o formulário de avaliação em breve.',
       onSuccess: () => {
+        clearDraft()
         window.scrollTo({ top: 0, behavior: 'smooth' })
         onSuccess()
       },
@@ -92,7 +105,7 @@ export function InteresseForm({ onSuccess }: { onSuccess: () => void }) {
         <CardTitle className="text-xl">Manifestação de Interesse</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleFormSubmit} className="space-y-6" noValidate>
+        <form onSubmit={handleFormSubmit} onFocus={handleFocus} className="space-y-6" noValidate>
           <fieldset disabled={isSubmittingAPI} className="border-0 p-0 m-0 min-w-0 w-full">
             <div className="flex items-start space-x-3">
               <Checkbox
@@ -162,6 +175,13 @@ export function InteresseForm({ onSuccess }: { onSuccess: () => void }) {
             </Button>
           </fieldset>
         </form>
+        <UnsavedChangesModal
+          blocker={blocker}
+          onDiscard={() => {
+            clearDraft()
+            setValues(defaultValues)
+          }}
+        />
       </CardContent>
     </Card>
   )

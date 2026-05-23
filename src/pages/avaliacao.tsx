@@ -11,6 +11,10 @@ import { format, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
 
+import { useDraftForm } from '@/hooks/use-draft-form'
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
+import { UnsavedChangesModal } from '@/components/unsaved-changes-modal'
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -66,12 +70,41 @@ export default function AvaliacaoPage() {
   const [filterStatus, setFilterStatus] = useState<string>('todos')
   const [filterData, setFilterData] = useState<string>('todos')
 
-  const [formData, setFormData] = useState({
+  const defaultFormData = {
     notaValores: '',
     notaCompetencia: '',
     justificativa: '',
     recomendacao: '',
+  }
+
+  const [formData, setFormData] = useState(defaultFormData)
+
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(defaultFormData)
+
+  const { isHydrated, clearDraft, handleFocus, saveImmediate } = useDraftForm({
+    key: displayId ? `avaliacao-rh-draft-${displayId}` : null,
+    currentValues: formData,
+    setValues: setFormData,
+    adapter: {
+      toDraft: (v) => ({
+        candidatoId: displayId,
+        notaAlinhamento: v.notaValores,
+        justificativaAlinhamento: v.justificativa,
+        notaCompetencia: v.notaCompetencia,
+        justificativaCompetencia: '',
+        recomendacao: v.recomendacao,
+        observacoes: '',
+      }),
+      fromDraft: (d: any) => ({
+        notaValores: d.notaAlinhamento || '',
+        notaCompetencia: d.notaCompetencia || '',
+        justificativa: d.justificativaAlinhamento || d.observacoes || '',
+        recomendacao: d.recomendacao || '',
+      }),
+    },
   })
+
+  const blocker = useUnsavedChanges(isDirty)
 
   const loadData = async () => {
     setLoading(true)
@@ -91,7 +124,11 @@ export default function AvaliacaoPage() {
 
   const handleSelectCandidate = (id: string) => {
     if (id === displayId) return
+    if (displayId && isDirty) {
+      saveImmediate(formData)
+    }
     setSelectedId(id)
+    setFormData(defaultFormData)
     if (displayId) {
       setIsFadingOut(true)
       setTimeout(() => {
@@ -104,44 +141,6 @@ export default function AvaliacaoPage() {
       setActiveTab('dados')
     }
   }
-
-  useEffect(() => {
-    if (displayId) {
-      const draftKey = `avaliacao-draft-${displayId}`
-      const saved = localStorage.getItem(draftKey)
-      if (saved) {
-        toast('Você tem um formulário em rascunho. Deseja continuar?', {
-          action: { label: 'Continuar', onClick: () => setFormData(JSON.parse(saved)) },
-          cancel: {
-            label: 'Descartar',
-            onClick: () => {
-              localStorage.removeItem(draftKey)
-              setFormData({
-                notaValores: '',
-                notaCompetencia: '',
-                justificativa: '',
-                recomendacao: '',
-              })
-            },
-          },
-          duration: 10000,
-        })
-      } else {
-        setFormData({ notaValores: '', notaCompetencia: '', justificativa: '', recomendacao: '' })
-      }
-    }
-  }, [displayId])
-
-  useEffect(() => {
-    if (!displayId) return
-    const draftKey = `avaliacao-draft-${displayId}`
-    const timer = setTimeout(() => {
-      if (formData.justificativa || formData.notaValores || formData.notaCompetencia) {
-        localStorage.setItem(draftKey, JSON.stringify(formData))
-      }
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [formData, displayId])
 
   const filteredCandidatos = candidatos.filter((c) => {
     if (filterStatus !== 'todos' && c.status !== filterStatus) return false
@@ -175,7 +174,7 @@ export default function AvaliacaoPage() {
         setCandidatos((prev) =>
           prev.map((c) => (c.id === displayId ? { ...c, status: 'Avaliação Concluída' } : c)),
         )
-        localStorage.removeItem(`avaliacao-draft-${displayId}`)
+        clearDraft()
         window.scrollTo({ top: 0, behavior: 'smooth' })
 
         setTimeout(() => {
@@ -487,7 +486,7 @@ export default function AvaliacaoPage() {
                     </TabsContent>
 
                     <TabsContent value="avaliacao" className="mt-6 animate-tab-fade-in">
-                      <form onSubmit={handleFormSubmit}>
+                      <form onSubmit={handleFormSubmit} onFocus={handleFocus}>
                         <fieldset
                           disabled={isSubmittingAPI}
                           className="border-0 p-0 m-0 min-w-0 w-full"
@@ -679,6 +678,7 @@ export default function AvaliacaoPage() {
                               onClick={() => {
                                 setDisplayId(null)
                                 setSelectedId(null)
+                                setFormData(defaultFormData)
                               }}
                               className="w-full sm:w-auto min-h-[44px]"
                             >
@@ -709,6 +709,13 @@ export default function AvaliacaoPage() {
           )}
         </div>
       </div>
+      <UnsavedChangesModal
+        blocker={blocker}
+        onDiscard={() => {
+          clearDraft()
+          setFormData(defaultFormData)
+        }}
+      />
     </div>
   )
 }

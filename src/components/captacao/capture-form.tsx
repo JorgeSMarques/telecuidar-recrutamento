@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { z } from 'zod'
+import { useDraftForm } from '@/hooks/use-draft-form'
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
+import { UnsavedChangesModal } from '@/components/unsaved-changes-modal'
 import { toast } from 'sonner'
 import { Loader2, Trash2, Send } from 'lucide-react'
 
@@ -86,7 +89,6 @@ const OPT = {
 }
 
 export function CaptureForm() {
-  const [isHydrated, setIsHydrated] = useState(false)
   const {
     values,
     errors,
@@ -100,32 +102,54 @@ export function CaptureForm() {
     setTouched,
   } = useFormValidation(defaultValues, formSchema)
 
-  useEffect(() => {
-    const draft = localStorage.getItem('captacao-draft')
-    if (draft) {
-      try {
-        setValues(JSON.parse(draft))
-      } catch (e) {
-        console.error(e)
-      }
-    }
-    setIsHydrated(true)
-  }, [setValues])
+  const isDirty = JSON.stringify(values) !== JSON.stringify(defaultValues)
 
-  useEffect(() => {
-    if (!isHydrated) return
-    const timeoutId = setTimeout(() => {
-      localStorage.setItem('captacao-draft', JSON.stringify(values))
-    }, 500)
-    return () => clearTimeout(timeoutId)
-  }, [values, isHydrated])
+  const { isHydrated, clearDraft, handleFocus } = useDraftForm({
+    key: 'captacao-draft',
+    currentValues: values,
+    setValues,
+    adapter: {
+      toDraft: (v) => ({
+        nome: v.nome,
+        email: v.email,
+        telefone: v.telefone,
+        linkedinUrl: v.linkedin,
+        profissao: v.profissao,
+        especialidade: v.especialidade,
+        experienciaTotal: v.experienciaTotal,
+        experienciaSUS: v.experienciaSus,
+        descricaoSUS: v.descricaoSus,
+        telemedicina: v.experienciaTelemedicina,
+        descricaoTelemedicina: v.descricaoTelemedicina,
+        canalCaptacao: v.canal,
+        especifiqueOutro: v.canalOutro,
+      }),
+      fromDraft: (d: any) => ({
+        nome: d.nome || '',
+        email: d.email || '',
+        telefone: d.telefone || '',
+        linkedin: d.linkedinUrl || '',
+        profissao: d.profissao || '',
+        especialidade: d.especialidade || '',
+        experienciaTotal: d.experienciaTotal || '',
+        experienciaSus: d.experienciaSUS || '',
+        descricaoSus: d.descricaoSUS || '',
+        experienciaTelemedicina: d.telemedicina || '',
+        descricaoTelemedicina: d.descricaoTelemedicina || '',
+        canal: d.canalCaptacao || '',
+        canalOutro: d.especifiqueOutro || '',
+      }),
+    },
+  })
+
+  const blocker = useUnsavedChanges(isDirty)
 
   const { execute: submitForm, isLoading: isSubmittingAPI } = useSubmit(submitCaptureForm, {
     successMessage: 'Candidatura enviada! Você receberá um e-mail de confirmação em breve.',
     onSuccess: () => {
       setValues(defaultValues)
       setTouched({})
-      localStorage.removeItem('captacao-draft')
+      clearDraft()
       window.scrollTo({ top: 0, behavior: 'smooth' })
     },
   })
@@ -176,7 +200,12 @@ export function CaptureForm() {
 
   return (
     <Card className="border shadow-subtle rounded-xl overflow-hidden bg-card text-card-foreground">
-      <form onSubmit={handleFormSubmit} className="p-4 md:p-6 lg:p-8" noValidate>
+      <form
+        onSubmit={handleFormSubmit}
+        onFocus={handleFocus}
+        className="p-4 md:p-6 lg:p-8"
+        noValidate
+      >
         <fieldset disabled={isSubmittingAPI} className="border-0 p-0 m-0 min-w-0 w-full">
           <fieldset className="mb-8 border-b border-border pb-8 last:mb-0 last:border-0 last:pb-0">
             <legend className="text-[1.125rem] font-semibold mb-4 w-full">Dados Pessoais</legend>
@@ -501,7 +530,7 @@ export function CaptureForm() {
               onClick={() => {
                 setValues(defaultValues)
                 setTouched({})
-                localStorage.removeItem('captacao-draft')
+                clearDraft()
               }}
             >
               <Trash2 className="w-4 h-4 mr-2" />
@@ -510,6 +539,14 @@ export function CaptureForm() {
           </div>
         </fieldset>
       </form>
+      <UnsavedChangesModal
+        blocker={blocker}
+        onDiscard={() => {
+          clearDraft()
+          setValues(defaultValues)
+          setTouched({})
+        }}
+      />
     </Card>
   )
 }

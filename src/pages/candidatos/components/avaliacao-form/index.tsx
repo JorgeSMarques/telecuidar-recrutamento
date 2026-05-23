@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { useForm, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
+import { useDraftForm } from '@/hooks/use-draft-form'
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
+import { UnsavedChangesModal } from '@/components/unsaved-changes-modal'
 import { avaliacaoSchema, AvaliacaoFormData } from './schema'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -32,30 +35,54 @@ export function AvaliacaoForm({ onSuccess }: { onSuccess: () => void }) {
     mode: 'onTouched',
   })
 
+  const currentFormValues = methods.watch()
+  const isDirty =
+    Object.keys(currentFormValues.valores || {}).length > 0 ||
+    Object.keys(currentFormValues.competencia || {}).length > 0
+  const currentDraftState = { form: currentFormValues, activeTab }
+
+  const { isHydrated, clearDraft, handleFocus, saveImmediate } = useDraftForm({
+    key: 'avaliacao-draft',
+    currentValues: currentDraftState,
+    setValues: (state) => {
+      methods.reset(state.form)
+      setActiveTab(state.activeTab)
+    },
+    debounceMs: 500,
+    adapter: {
+      toDraft: (state) => ({
+        respostasLikert: Object.entries(state.form.valores || {}).map(([k, v]) => ({
+          id: k,
+          valor: v,
+        })),
+        respostasAbertas: Object.entries(state.form.competencia || {}).map(([k, v]) => ({
+          id: k,
+          resposta: v,
+        })),
+        tabAtivo: state.activeTab,
+      }),
+      fromDraft: (draft: any) => ({
+        form: {
+          valores:
+            draft.respostasLikert?.reduce(
+              (acc: any, item: any) => ({ ...acc, [item.id]: item.valor }),
+              {},
+            ) || {},
+          competencia:
+            draft.respostasAbertas?.reduce(
+              (acc: any, item: any) => ({ ...acc, [item.id]: item.resposta }),
+              {},
+            ) || {},
+        },
+        activeTab: draft.tabAtivo || 'valores',
+      }),
+    },
+  })
+
+  const blocker = useUnsavedChanges(isDirty)
+
   // Mock days remaining for the badge showcase
   const daysRemaining = 4
-
-  useEffect(() => {
-    const saved = localStorage.getItem('avaliacao-draft')
-    if (saved) {
-      toast('Você tem um formulário em rascunho. Deseja continuar?', {
-        action: { label: 'Continuar', onClick: () => methods.reset(JSON.parse(saved)) },
-        cancel: { label: 'Descartar', onClick: () => localStorage.removeItem('avaliacao-draft') },
-        duration: Infinity,
-      })
-    }
-  }, [methods.reset])
-
-  useEffect(() => {
-    const subscription = methods.watch((value) => {
-      const handler = setTimeout(
-        () => localStorage.setItem('avaliacao-draft', JSON.stringify(value)),
-        500,
-      )
-      return () => clearTimeout(handler)
-    })
-    return () => subscription.unsubscribe()
-  }, [methods.watch])
 
   const { execute: submitForm, isLoading: isSubmittingAPI } = useSubmit(
     async () => {
@@ -64,7 +91,7 @@ export function AvaliacaoForm({ onSuccess }: { onSuccess: () => void }) {
     {
       successMessage: 'Avaliação enviada com sucesso!',
       onSuccess: () => {
-        localStorage.removeItem('avaliacao-draft')
+        clearDraft()
         window.scrollTo({ top: 0, behavior: 'smooth' })
         onSuccess()
       },
@@ -101,21 +128,30 @@ export function AvaliacaoForm({ onSuccess }: { onSuccess: () => void }) {
       </CardHeader>
       <CardContent>
         <FormProvider {...methods}>
-          <fieldset disabled={isSubmittingAPI} className="border-0 p-0 m-0 min-w-0 w-full">
+          <fieldset
+            disabled={isSubmittingAPI}
+            onFocus={handleFocus}
+            className="border-0 p-0 m-0 min-w-0 w-full"
+          >
             <Tabs
               value={activeTab}
               onValueChange={(val) => {
                 if (activeTab === 'valores' && val !== 'valores') {
                   methods.trigger('valores').then((valid) => {
-                    if (valid) setActiveTab(val)
-                    else toast.error('Responda todas as perguntas antes de prosseguir')
+                    if (valid) {
+                      saveImmediate({ form: currentFormValues, activeTab: val })
+                      setActiveTab(val)
+                    } else toast.error('Responda todas as perguntas antes de prosseguir')
                   })
                 } else if (activeTab === 'competencia' && val === 'resumo') {
                   methods.trigger('competencia').then((valid) => {
-                    if (valid) setActiveTab(val)
-                    else toast.error('Preencha todas as respostas com mínimo 10 caracteres')
+                    if (valid) {
+                      saveImmediate({ form: currentFormValues, activeTab: val })
+                      setActiveTab(val)
+                    } else toast.error('Preencha todas as respostas com mínimo 10 caracteres')
                   })
                 } else {
+                  saveImmediate({ form: currentFormValues, activeTab: val })
                   setActiveTab(val)
                 }
               }}
@@ -170,6 +206,13 @@ export function AvaliacaoForm({ onSuccess }: { onSuccess: () => void }) {
             </Tabs>
           </fieldset>
         </FormProvider>
+        <UnsavedChangesModal
+          blocker={blocker}
+          onDiscard={() => {
+            clearDraft()
+            methods.reset()
+          }}
+        />
       </CardContent>
     </Card>
   )
