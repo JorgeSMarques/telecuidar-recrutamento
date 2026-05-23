@@ -1,6 +1,4 @@
-import { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { Loader2, Trash2, Send } from 'lucide-react'
@@ -16,39 +14,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DynamicFormField, ConditionalField } from '@/components/ui/dynamic-form'
+import { useFormValidation } from '@/hooks/use-form-validation'
 import { submitCaptureForm } from '@/services/captureService'
 
 const formSchema = z
   .object({
     nome: z.string().min(3, 'Mínimo de 3 caracteres').max(100, 'Máximo 100 caracteres'),
-    email: z.string().email('E-mail inválido'),
-    telefone: z.string().regex(/^\(\d{2}\) \d{4,5}-\d{4}$/, 'Deve ser (XX) XXXXX-XXXX'),
-    linkedin: z.string().url('URL inválida').optional().or(z.literal('')),
-    profissao: z.string().min(1, 'Selecione a profissão'),
+    email: z.string().email('E-mail deve ser válido'),
+    telefone: z.string().regex(/^\(\d{2}\) \d{4,5}-\d{4}$/, 'Deve ser no formato (XX) XXXXX-XXXX'),
+    linkedin: z
+      .string()
+      .url('URL inválida')
+      .refine(
+        (val) => val === '' || /^https:\/\/(www\.)?linkedin\.com/.test(val),
+        'URL deve ser do LinkedIn',
+      )
+      .optional()
+      .or(z.literal('')),
+    profissao: z.string().min(1, 'Campo obrigatório'),
     especialidade: z.string().min(1, 'Campo obrigatório').max(100, 'Máximo 100 caracteres'),
-    experienciaTotal: z.string().min(1, 'Selecione a experiência'),
-    experienciaSus: z.string().min(1, 'Selecione a experiência'),
+    experienciaTotal: z.string().min(1, 'Campo obrigatório'),
+    experienciaSus: z.string().min(1, 'Campo obrigatório'),
     descricaoSus: z.string().max(500, 'Máximo 500 caracteres').optional(),
-    experienciaTelemedicina: z.string().min(1, 'Selecione a experiência'),
+    experienciaTelemedicina: z.string().min(1, 'Campo obrigatório'),
     descricaoTelemedicina: z.string().max(500, 'Máximo 500 caracteres').optional(),
-    canal: z.string().min(1, 'Selecione o canal'),
+    canal: z.string().min(1, 'Campo obrigatório'),
     canalOutro: z.string().max(100, 'Máximo 100 caracteres').optional(),
   })
-  .refine((d) => d.canal !== 'Outro' || !!d.canalOutro, {
+  .refine((d) => d.canal !== 'Outro' || (d.canalOutro && d.canalOutro.length > 0), {
     message: 'Especifique o canal',
     path: ['canalOutro'],
   })
 
 type FormData = z.infer<typeof formSchema>
+
 const defaultValues: FormData = {
   nome: '',
   email: '',
@@ -84,46 +85,46 @@ const OPT = {
 
 export function CaptureForm() {
   const [isHydrated, setIsHydrated] = useState(false)
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues,
-    mode: 'onChange',
-  })
-  const canal = form.watch('canal')
+  const {
+    values,
+    errors,
+    touched,
+    handleChange,
+    handleBlur,
+    handleSubmit,
+    isSubmitting,
+    setValues,
+    setTouched,
+  } = useFormValidation(defaultValues, formSchema)
 
   useEffect(() => {
     const draft = localStorage.getItem('captacao-draft')
     if (draft) {
       try {
-        form.reset(JSON.parse(draft))
+        setValues(JSON.parse(draft))
       } catch (e) {
         console.error(e)
       }
     }
     setIsHydrated(true)
-  }, [form])
+  }, [setValues])
 
   useEffect(() => {
     if (!isHydrated) return
-    let timeoutId: NodeJS.Timeout
-    const sub = form.watch((value) => {
-      clearTimeout(timeoutId)
-      timeoutId = setTimeout(
-        () => localStorage.setItem('captacao-draft', JSON.stringify(value)),
-        500,
-      )
-    })
-    return () => {
-      clearTimeout(timeoutId)
-      sub.unsubscribe()
-    }
-  }, [form, isHydrated])
+    const timeoutId = setTimeout(() => {
+      localStorage.setItem('captacao-draft', JSON.stringify(values))
+    }, 500)
+    return () => clearTimeout(timeoutId)
+  }, [values, isHydrated])
 
   const onSubmit = async (data: FormData) => {
     try {
       await submitCaptureForm(data)
-      toast.success('Candidatura enviada com sucesso! Você receberá um e-mail de confirmação.')
-      form.reset(defaultValues)
+      toast.success('Candidatura enviada com sucesso! Você receberá um e-mail de confirmação.', {
+        className: 'bg-primary text-primary-foreground border-none',
+      })
+      setValues(defaultValues)
+      setTouched({})
       localStorage.removeItem('captacao-draft')
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
@@ -140,7 +141,7 @@ export function CaptureForm() {
     return v
   }
 
-  if (!isHydrated)
+  if (!isHydrated) {
     return (
       <Card className="border shadow-subtle rounded-xl overflow-hidden">
         <CardContent className="p-4 md:p-6 lg:p-8 space-y-6">
@@ -150,301 +151,336 @@ export function CaptureForm() {
         </CardContent>
       </Card>
     )
-
-  const isSubmitting = form.formState.isSubmitting
-  const isValid = form.formState.isValid
+  }
 
   return (
     <Card className="border shadow-subtle rounded-xl overflow-hidden bg-card text-card-foreground">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="p-4 md:p-6 lg:p-8">
-          <fieldset className="mb-8 border-b border-border pb-8 last:mb-0 last:border-0 last:pb-0">
-            <legend className="text-[1.125rem] font-semibold mb-4 w-full">Dados Pessoais</legend>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="nome"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome</FormLabel>
-                    <FormControl>
-                      <Input {...field} aria-required />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>E-mail</FormLabel>
-                    <FormControl>
-                      <Input type="email" {...field} aria-required />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="telefone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Telefone</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="(XX) XXXXX-XXXX"
-                        {...field}
-                        aria-required
-                        onChange={(e) => field.onChange(formatPhone(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="linkedin"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>LinkedIn URL</FormLabel>
-                    <FormControl>
-                      <Input type="url" placeholder="https://..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </fieldset>
-
-          <fieldset className="mb-8 border-b border-border pb-8 last:mb-0 last:border-0 last:pb-0">
-            <legend className="text-[1.125rem] font-semibold mb-4 w-full">
-              Profissão e Especialidade
-            </legend>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <FormField
-                control={form.control}
-                name="profissao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Profissão</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger aria-required>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {OPT.prof.map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {p}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="especialidade"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Especialidade</FormLabel>
-                    <FormControl>
-                      <Input {...field} aria-required />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="experienciaTotal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Experiência Total</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger aria-required>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {OPT.exp.map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {p}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </fieldset>
-
-          <fieldset className="mb-8 border-b border-border pb-8 last:mb-0 last:border-0 last:pb-0">
-            <legend className="text-[1.125rem] font-semibold mb-4 w-full">Experiência SUS</legend>
-            <div className="grid grid-cols-1 gap-6">
-              <FormField
-                control={form.control}
-                name="experienciaSus"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tempo de Experiência</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger aria-required>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {OPT.sus.map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {p}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="descricaoSus"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição da Experiência</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </fieldset>
-
-          <fieldset className="mb-8 border-b border-border pb-8 last:mb-0 last:border-0 last:pb-0">
-            <legend className="text-[1.125rem] font-semibold mb-4 w-full">Telemedicina</legend>
-            <div className="grid grid-cols-1 gap-6">
-              <FormField
-                control={form.control}
-                name="experienciaTelemedicina"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Experiência em Telemedicina</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger aria-required>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {OPT.tele.map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {p}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="descricaoTelemedicina"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição da Experiência</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </fieldset>
-
-          <fieldset className="mb-8 border-b border-border pb-8 last:mb-0 last:border-0 last:pb-0">
-            <legend className="text-[1.125rem] font-semibold mb-4 w-full">Canal de Captação</legend>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="canal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Canal</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger aria-required>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {OPT.canal.map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {p}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {canal === 'Outro' && (
-                <FormField
-                  control={form.control}
-                  name="canalOutro"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Especifique</FormLabel>
-                      <FormControl>
-                        <Input {...field} aria-required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-            </div>
-          </fieldset>
-
-          <div className="flex flex-col md:flex-row gap-4 mt-8 pt-4">
-            <Button type="submit" disabled={!isValid || isSubmitting} className="w-full md:w-auto">
-              {isSubmitting ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4 mr-2" />
-              )}
-              Enviar Candidatura
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full md:w-auto"
-              onClick={() => {
-                form.reset(defaultValues)
-                localStorage.removeItem('captacao-draft')
-              }}
+      <form onSubmit={handleSubmit(onSubmit)} className="p-4 md:p-6 lg:p-8" noValidate>
+        <fieldset className="mb-8 border-b border-border pb-8 last:mb-0 last:border-0 last:pb-0">
+          <legend className="text-[1.125rem] font-semibold mb-4 w-full">Dados Pessoais</legend>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <DynamicFormField
+              id="nome"
+              label="Nome"
+              required
+              touched={touched.nome}
+              error={errors.nome}
+              currentLength={values.nome.length}
+              maxLength={100}
             >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Limpar Formulário
-            </Button>
+              <Input
+                name="nome"
+                value={values.nome}
+                onChange={(e) => handleChange('nome', e.target.value)}
+                onBlur={() => handleBlur('nome')}
+              />
+            </DynamicFormField>
+
+            <DynamicFormField
+              id="email"
+              label="E-mail"
+              required
+              touched={touched.email}
+              error={errors.email}
+            >
+              <Input
+                name="email"
+                type="email"
+                value={values.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                onBlur={() => handleBlur('email')}
+              />
+            </DynamicFormField>
+
+            <DynamicFormField
+              id="telefone"
+              label="Telefone"
+              required
+              touched={touched.telefone}
+              error={errors.telefone}
+            >
+              <Input
+                name="telefone"
+                placeholder="(XX) XXXXX-XXXX"
+                value={values.telefone}
+                onChange={(e) => handleChange('telefone', formatPhone(e.target.value))}
+                onBlur={() => handleBlur('telefone')}
+              />
+            </DynamicFormField>
+
+            <DynamicFormField
+              id="linkedin"
+              label="LinkedIn URL"
+              touched={touched.linkedin}
+              error={errors.linkedin}
+            >
+              <Input
+                name="linkedin"
+                type="url"
+                placeholder="https://www.linkedin.com/in/..."
+                value={values.linkedin}
+                onChange={(e) => handleChange('linkedin', e.target.value)}
+                onBlur={() => handleBlur('linkedin')}
+              />
+            </DynamicFormField>
           </div>
-        </form>
-      </Form>
+        </fieldset>
+
+        <fieldset className="mb-8 border-b border-border pb-8 last:mb-0 last:border-0 last:pb-0">
+          <legend className="text-[1.125rem] font-semibold mb-4 w-full">
+            Profissão e Especialidade
+          </legend>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <DynamicFormField
+              id="profissao"
+              label="Profissão"
+              required
+              touched={touched.profissao}
+              error={errors.profissao}
+            >
+              <Select
+                value={values.profissao}
+                onValueChange={(v) => {
+                  handleChange('profissao', v)
+                  handleBlur('profissao')
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {OPT.prof.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </DynamicFormField>
+
+            <DynamicFormField
+              id="especialidade"
+              label="Especialidade"
+              required
+              touched={touched.especialidade}
+              error={errors.especialidade}
+              currentLength={values.especialidade.length}
+              maxLength={100}
+            >
+              <Input
+                name="especialidade"
+                value={values.especialidade}
+                onChange={(e) => handleChange('especialidade', e.target.value)}
+                onBlur={() => handleBlur('especialidade')}
+              />
+            </DynamicFormField>
+
+            <DynamicFormField
+              id="experienciaTotal"
+              label="Experiência Total"
+              required
+              touched={touched.experienciaTotal}
+              error={errors.experienciaTotal}
+            >
+              <Select
+                value={values.experienciaTotal}
+                onValueChange={(v) => {
+                  handleChange('experienciaTotal', v)
+                  handleBlur('experienciaTotal')
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {OPT.exp.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </DynamicFormField>
+          </div>
+        </fieldset>
+
+        <fieldset className="mb-8 border-b border-border pb-8 last:mb-0 last:border-0 last:pb-0">
+          <legend className="text-[1.125rem] font-semibold mb-4 w-full">Experiência SUS</legend>
+          <div className="grid grid-cols-1 gap-6">
+            <DynamicFormField
+              id="experienciaSus"
+              label="Tempo de Experiência"
+              required
+              touched={touched.experienciaSus}
+              error={errors.experienciaSus}
+            >
+              <Select
+                value={values.experienciaSus}
+                onValueChange={(v) => {
+                  handleChange('experienciaSus', v)
+                  handleBlur('experienciaSus')
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {OPT.sus.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </DynamicFormField>
+
+            <DynamicFormField
+              id="descricaoSus"
+              label="Descrição da Experiência"
+              touched={touched.descricaoSus}
+              error={errors.descricaoSus}
+              currentLength={values.descricaoSus?.length || 0}
+              maxLength={500}
+            >
+              <Textarea
+                name="descricaoSus"
+                value={values.descricaoSus}
+                onChange={(e) => handleChange('descricaoSus', e.target.value)}
+                onBlur={() => handleBlur('descricaoSus')}
+              />
+            </DynamicFormField>
+          </div>
+        </fieldset>
+
+        <fieldset className="mb-8 border-b border-border pb-8 last:mb-0 last:border-0 last:pb-0">
+          <legend className="text-[1.125rem] font-semibold mb-4 w-full">Telemedicina</legend>
+          <div className="grid grid-cols-1 gap-6">
+            <DynamicFormField
+              id="experienciaTelemedicina"
+              label="Experiência em Telemedicina"
+              required
+              touched={touched.experienciaTelemedicina}
+              error={errors.experienciaTelemedicina}
+            >
+              <Select
+                value={values.experienciaTelemedicina}
+                onValueChange={(v) => {
+                  handleChange('experienciaTelemedicina', v)
+                  handleBlur('experienciaTelemedicina')
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {OPT.tele.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </DynamicFormField>
+
+            <DynamicFormField
+              id="descricaoTelemedicina"
+              label="Descrição da Experiência"
+              touched={touched.descricaoTelemedicina}
+              error={errors.descricaoTelemedicina}
+              currentLength={values.descricaoTelemedicina?.length || 0}
+              maxLength={500}
+            >
+              <Textarea
+                name="descricaoTelemedicina"
+                value={values.descricaoTelemedicina}
+                onChange={(e) => handleChange('descricaoTelemedicina', e.target.value)}
+                onBlur={() => handleBlur('descricaoTelemedicina')}
+              />
+            </DynamicFormField>
+          </div>
+        </fieldset>
+
+        <fieldset className="mb-8 border-b border-border pb-8 last:mb-0 last:border-0 last:pb-0">
+          <legend className="text-[1.125rem] font-semibold mb-4 w-full">Canal de Captação</legend>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <DynamicFormField
+              id="canal"
+              label="Canal"
+              required
+              touched={touched.canal}
+              error={errors.canal}
+            >
+              <Select
+                value={values.canal}
+                onValueChange={(v) => {
+                  handleChange('canal', v)
+                  handleBlur('canal')
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {OPT.canal.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </DynamicFormField>
+
+            <div className="md:col-start-2">
+              <ConditionalField show={values.canal === 'Outro'}>
+                <DynamicFormField
+                  id="canalOutro"
+                  label="Especifique o Canal"
+                  required
+                  touched={touched.canalOutro}
+                  error={errors.canalOutro}
+                  currentLength={values.canalOutro?.length || 0}
+                  maxLength={100}
+                >
+                  <Input
+                    name="canalOutro"
+                    value={values.canalOutro}
+                    onChange={(e) => handleChange('canalOutro', e.target.value)}
+                    onBlur={() => handleBlur('canalOutro')}
+                  />
+                </DynamicFormField>
+              </ConditionalField>
+            </div>
+          </div>
+        </fieldset>
+
+        <div className="flex flex-col md:flex-row gap-4 mt-8 pt-4">
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full md:w-auto hover:bg-green-600 transition-colors"
+          >
+            {isSubmitting ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4 mr-2" />
+            )}
+            Enviar Candidatura
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full md:w-auto"
+            onClick={() => {
+              setValues(defaultValues)
+              setTouched({})
+              localStorage.removeItem('captacao-draft')
+            }}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Limpar Formulário
+          </Button>
+        </div>
+      </form>
     </Card>
   )
 }

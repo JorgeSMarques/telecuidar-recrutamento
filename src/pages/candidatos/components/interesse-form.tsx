@@ -1,7 +1,4 @@
-import { useState } from 'react'
 import { z } from 'zod'
-import { useForm, Controller } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -10,46 +7,56 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { avaliacaoService } from '@/services/avaliacao-service'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { DynamicFormField, ConditionalField } from '@/components/ui/dynamic-form'
+import { useFormValidation } from '@/hooks/use-form-validation'
 
-const schema = z.object({
-  confirmado: z.literal(true, { errorMap: () => ({ message: 'Você deve confirmar o interesse' }) }),
-  telefone: z.string().min(14, 'Telefone inválido'),
-  mensagem: z.string().max(300, 'Máximo 300 caracteres').optional(),
-})
+const schema = z
+  .object({
+    confirmado: z.boolean(),
+    telefone: z.string().optional(),
+    mensagem: z.string().max(300, 'Máximo 300 caracteres').optional(),
+  })
+  .refine((d) => !d.confirmado || (d.telefone && /^\(\d{2}\) \d{4,5}-\d{4}$/.test(d.telefone)), {
+    message: 'Telefone deve estar no formato (XX) XXXXX-XXXX',
+    path: ['telefone'],
+  })
 
 type FormData = z.infer<typeof schema>
 
 export function InteresseForm({ onSuccess }: { onSuccess: () => void }) {
-  const [loading, setLoading] = useState(false)
   const {
-    register,
+    values,
+    errors,
+    touched,
+    handleChange,
+    handleBlur,
     handleSubmit,
-    formState: { errors, isValid },
-    setValue,
-    watch,
-    control,
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { confirmado: false as true, telefone: '', mensagem: '' },
-    mode: 'onChange',
-  })
+    isSubmitting,
+    setValues,
+  } = useFormValidation<FormData>({ confirmado: false, telefone: '', mensagem: '' }, schema)
 
-  const handlePhone = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let v = e.target.value.replace(/\D/g, '')
+  const handlePhone = (val: string) => {
+    let v = val.replace(/\D/g, '')
     if (v.length > 11) v = v.slice(0, 11)
-    v = v.replace(/^(\d{2})(\d)/g, '($1) $2')
-    v = v.replace(/(\d)(\d{4})$/, '$1-$2')
-    setValue('telefone', v, { shouldValidate: true })
+    if (v.length > 10) v = v.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3')
+    else if (v.length > 6) v = v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3')
+    else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,5})/, '($1) $2')
+    handleChange('telefone', v)
   }
 
   const onSubmit = async (data: FormData) => {
-    setLoading(true)
+    if (!data.confirmado) {
+      toast.error('Você deve confirmar o interesse para prosseguir.')
+      return
+    }
     try {
-      await avaliacaoService.confirmarInteresse(data)
-      toast.success('Interesse confirmado! Você receberá o formulário de avaliação em breve.')
+      await avaliacaoService.confirmarInteresse(data as any)
+      toast.success('Interesse confirmado! Você receberá o formulário de avaliação em breve.', {
+        className: 'bg-primary text-primary-foreground border-none',
+      })
       onSuccess()
-    } finally {
-      setLoading(false)
+    } catch {
+      toast.error('Erro ao confirmar interesse')
     }
   }
 
@@ -59,63 +66,65 @@ export function InteresseForm({ onSuccess }: { onSuccess: () => void }) {
         <CardTitle className="text-xl">Manifestação de Interesse</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
           <div className="flex items-start space-x-3">
-            <Controller
-              control={control}
-              name="confirmado"
-              render={({ field }) => (
-                <Checkbox
-                  id="confirmado"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  className="mt-1"
-                  aria-invalid={!!errors.confirmado}
-                />
-              )}
+            <Checkbox
+              id="confirmado"
+              checked={values.confirmado}
+              onCheckedChange={(c) => setValues((p) => ({ ...p, confirmado: c === true }))}
+              className="mt-1"
             />
-            <div className="space-y-1 leading-none">
-              <Label htmlFor="confirmado" className="font-medium">
+            <div className="space-y-1 leading-none flex-1">
+              <Label htmlFor="confirmado" className="font-medium text-base cursor-pointer">
                 Confirmo meu interesse em participar do processo de seleção da Telecuidar{' '}
                 <span className="text-destructive">*</span>
               </Label>
-              {errors.confirmado && (
-                <p className="text-sm text-destructive mt-1">{errors.confirmado.message}</p>
-              )}
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="telefone">
-              Telefone <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="telefone"
-              placeholder="(00) 00000-0000"
-              value={watch('telefone')}
-              onChange={handlePhone}
-              aria-invalid={!!errors.telefone}
-            />
-            {errors.telefone && (
-              <p className="text-sm text-destructive">{errors.telefone.message}</p>
-            )}
-          </div>
+          <ConditionalField show={values.confirmado}>
+            <div className="space-y-6">
+              <DynamicFormField
+                id="telefone"
+                label="Telefone"
+                required
+                touched={touched.telefone}
+                error={errors.telefone}
+              >
+                <Input
+                  name="telefone"
+                  placeholder="(XX) XXXXX-XXXX"
+                  value={values.telefone || ''}
+                  onChange={(e) => handlePhone(e.target.value)}
+                  onBlur={() => handleBlur('telefone')}
+                />
+              </DynamicFormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="mensagem">Mensagem Adicional (opcional)</Label>
-            <Textarea
-              id="mensagem"
-              {...register('mensagem')}
-              placeholder="Alguma observação importante?"
-              maxLength={300}
-            />
-            <div className="text-xs text-muted-foreground text-right">
-              {(watch('mensagem') || '').length}/300
+              <DynamicFormField
+                id="mensagem"
+                label="Mensagem Adicional (opcional)"
+                touched={touched.mensagem}
+                error={errors.mensagem}
+                currentLength={values.mensagem?.length || 0}
+                maxLength={300}
+              >
+                <Textarea
+                  name="mensagem"
+                  placeholder="Alguma observação importante?"
+                  value={values.mensagem || ''}
+                  onChange={(e) => handleChange('mensagem', e.target.value)}
+                  onBlur={() => handleBlur('mensagem')}
+                />
+              </DynamicFormField>
             </div>
-          </div>
+          </ConditionalField>
 
-          <Button type="submit" disabled={!isValid || loading} className="w-full sm:w-auto">
-            {loading ? 'Confirmando...' : 'Confirmar Interesse'}
+          <Button
+            type="submit"
+            disabled={isSubmitting || !values.confirmado}
+            className="w-full sm:w-auto hover:bg-green-600 transition-colors"
+          >
+            {isSubmitting ? 'Confirmando...' : 'Confirmar Interesse'}
           </Button>
         </form>
       </CardContent>
