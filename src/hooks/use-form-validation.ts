@@ -10,10 +10,14 @@ export function useFormValidation<T extends Record<string, any>>(
   const [errors, setErrors] = useState<Partial<Record<keyof T, string>>>({})
   const [touched, setTouched] = useState<Partial<Record<keyof T, boolean>>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
 
   const validateDebounced = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
+    const isDifferent = JSON.stringify(values) !== JSON.stringify(initialValues)
+    setIsDirty(isDifferent)
+
     if (validateDebounced.current) clearTimeout(validateDebounced.current)
     validateDebounced.current = setTimeout(() => {
       const result = schema.safeParse(values)
@@ -37,10 +41,26 @@ export function useFormValidation<T extends Record<string, any>>(
     return () => {
       if (validateDebounced.current) clearTimeout(validateDebounced.current)
     }
-  }, [values, touched, schema])
+  }, [values, touched, schema, initialValues])
+
+  const isValid = schema.safeParse(values).success
 
   const handleChange = (name: keyof T, value: any) => {
     setValues((prev) => ({ ...prev, [name]: value }))
+    const tempValues = { ...values, [name]: value }
+    const result = schema.safeParse(tempValues)
+    if (result.success) {
+      setErrors({})
+    } else {
+      const hasErrorForField = result.error.issues.some((issue) => issue.path[0] === name)
+      if (!hasErrorForField) {
+        setErrors((prev) => {
+          const newE = { ...prev }
+          delete newE[name]
+          return newE
+        })
+      }
+    }
   }
 
   const handleBlur = (name: keyof T) => {
@@ -82,6 +102,8 @@ export function useFormValidation<T extends Record<string, any>>(
     errors,
     touched,
     isSubmitting,
+    isDirty,
+    isValid,
     handleChange,
     handleBlur,
     handleSubmit,

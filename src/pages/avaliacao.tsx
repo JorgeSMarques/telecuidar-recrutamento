@@ -26,6 +26,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { ConditionalField } from '@/components/ui/dynamic-form'
 
 import { CandidatoAvaliacao } from '@/types'
 import { avaliacaoService } from '@/services/avaliacao-service'
@@ -133,12 +134,17 @@ export default function AvaliacaoPage() {
   })
 
   const selectedCandidato = candidatos.find((c) => c.id === selectedId)
-  const isJustificativaValid = formData.justificativa.length >= 10
+  const isJustificativaRequerida = formData.recomendacao === 'Não recomendo'
+  const isJustificativaValid = isJustificativaRequerida
+    ? formData.justificativa.length >= 10 && formData.justificativa.length <= 300
+    : formData.justificativa.length <= 500
+
   const isValid =
     formData.notaValores &&
     formData.notaCompetencia &&
     isJustificativaValid &&
-    formData.recomendacao
+    formData.recomendacao &&
+    (!isJustificativaRequerida || formData.justificativa.length > 0)
 
   const handleSubmit = async () => {
     if (!selectedId || !isValid) return
@@ -500,39 +506,99 @@ export default function AvaliacaoPage() {
                         </Select>
                       </fieldset>
 
-                      <fieldset className="space-y-2">
-                        <Label htmlFor="justificativa" className="font-medium block">
-                          Justificativa Detalhada <span className="text-destructive">*</span>
-                        </Label>
-                        <Textarea
-                          id="justificativa"
-                          placeholder="Detalhes sobre a recomendação e as notas atribuídas... (Mínimo de 10 caracteres)"
-                          maxLength={500}
-                          value={formData.justificativa}
-                          onChange={(e) =>
-                            setFormData((p) => ({ ...p, justificativa: e.target.value }))
-                          }
-                          aria-required="true"
-                          aria-invalid={formData.justificativa.length > 0 && !isJustificativaValid}
-                          aria-describedby={
-                            formData.justificativa.length > 0 && !isJustificativaValid
-                              ? 'justificativa-error'
-                              : undefined
-                          }
-                        />
-                        <div className="flex justify-between items-start mt-1 h-5">
-                          {formData.justificativa.length > 0 && !isJustificativaValid ? (
-                            <span id="justificativa-error" className="text-destructive text-xs">
-                              Mínimo de 10 caracteres.
+                      <ConditionalField show={formData.recomendacao === 'Não recomendo'}>
+                        <fieldset className="space-y-2">
+                          <Label htmlFor="justificativa" className="font-medium block">
+                            Justificativa Obrigatória <span className="text-destructive">*</span>
+                          </Label>
+                          <Textarea
+                            id="justificativa"
+                            placeholder="Descreva detalhadamente o motivo da não recomendação..."
+                            maxLength={300}
+                            value={formData.justificativa}
+                            onChange={(e) =>
+                              setFormData((p) => ({ ...p, justificativa: e.target.value }))
+                            }
+                            aria-required="true"
+                            aria-invalid={
+                              formData.justificativa.length > 0 && !isJustificativaValid
+                            }
+                            aria-describedby={
+                              formData.justificativa.length > 0 && !isJustificativaValid
+                                ? 'justificativa-error'
+                                : undefined
+                            }
+                            className={
+                              formData.justificativa.length > 0 && !isJustificativaValid
+                                ? 'border-destructive focus-visible:ring-destructive'
+                                : ''
+                            }
+                          />
+                          <div className="flex justify-between items-start mt-1 h-5">
+                            {formData.justificativa.length > 0 && !isJustificativaValid ? (
+                              <span
+                                id="justificativa-error"
+                                className="text-destructive text-xs font-medium animate-fade-in"
+                              >
+                                Mínimo de 10 caracteres.
+                              </span>
+                            ) : (
+                              <span />
+                            )}
+                            <span
+                              className={cn(
+                                'text-xs font-medium transition-colors w-full text-right block',
+                                formData.justificativa.length >= 300
+                                  ? 'text-destructive'
+                                  : formData.justificativa.length >= 240
+                                    ? 'text-ring'
+                                    : 'opacity-60',
+                              )}
+                            >
+                              {formData.justificativa.length}/300
                             </span>
-                          ) : (
-                            <span />
-                          )}
-                          <span className="text-xs opacity-60 w-full text-right block">
-                            {formData.justificativa.length}/500
-                          </span>
-                        </div>
-                      </fieldset>
+                          </div>
+                        </fieldset>
+                      </ConditionalField>
+
+                      <ConditionalField
+                        show={
+                          formData.recomendacao !== 'Não recomendo' && formData.recomendacao !== ''
+                        }
+                      >
+                        <fieldset className="space-y-2">
+                          <Label htmlFor="justificativa" className="font-medium block">
+                            Justificativa Detalhada (Opcional)
+                          </Label>
+                          <Textarea
+                            id="justificativa"
+                            placeholder="Detalhes adicionais sobre as notas atribuídas..."
+                            maxLength={500}
+                            value={formData.justificativa}
+                            onChange={(e) =>
+                              setFormData((p) => ({ ...p, justificativa: e.target.value }))
+                            }
+                            aria-required="false"
+                            aria-invalid={
+                              formData.justificativa.length > 0 && !isJustificativaValid
+                            }
+                          />
+                          <div className="flex justify-end items-start mt-1 h-5">
+                            <span
+                              className={cn(
+                                'text-xs font-medium transition-colors',
+                                formData.justificativa.length >= 500
+                                  ? 'text-destructive'
+                                  : formData.justificativa.length >= 400
+                                    ? 'text-ring'
+                                    : 'opacity-60',
+                              )}
+                            >
+                              {formData.justificativa.length}/500
+                            </span>
+                          </div>
+                        </fieldset>
+                      </ConditionalField>
                     </div>
 
                     <div className="mt-8 pt-6 border-t flex flex-col sm:flex-row justify-end gap-4">
@@ -547,7 +613,10 @@ export default function AvaliacaoPage() {
                       <Button
                         type="submit"
                         disabled={!isValid}
-                        className="w-full sm:w-auto min-h-[44px]"
+                        className={cn(
+                          'w-full sm:w-auto min-h-[44px] transition-colors',
+                          isValid ? 'bg-green-600 hover:bg-green-700' : '',
+                        )}
                       >
                         Enviar ao Diretor Técnico
                       </Button>

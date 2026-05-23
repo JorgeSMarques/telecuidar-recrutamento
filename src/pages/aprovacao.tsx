@@ -14,6 +14,8 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { ConditionalField, DynamicFormField } from '@/components/ui/dynamic-form'
+import { validators } from '@/lib/validators'
 
 import { CandidatoAprovacao } from '@/types'
 import { aprovacaoService } from '@/services/aprovacao-service'
@@ -131,14 +133,20 @@ export default function AprovacaoPage() {
     return () => clearTimeout(timer)
   }, [formData, selectedId])
 
-  const isJustificativaValid = formData.justificativa.length >= 5
+  const isJustificativaValid =
+    formData.decisao === 'rejeitar'
+      ? formData.justificativa.length >= 5 && formData.justificativa.length <= 300
+      : true
 
   const validateForm = () => {
     if (!formData.decisao) return false
-    if (!isJustificativaValid) return false
+    if (formData.decisao === 'rejeitar' && !isJustificativaValid) return false
     if (formData.decisao === 'aprovar') {
       if (!formData.agendamentoData || !formData.agendamentoHora || !formData.agendamentoEmail)
         return false
+      if (!validators.email(formData.agendamentoEmail).isValid) return false
+      if (!validators.minDate(formData.agendamentoData).isValid) return false
+      if (!validators.time(formData.agendamentoHora).isValid) return false
     }
     return true
   }
@@ -371,18 +379,26 @@ export default function AprovacaoPage() {
                         </RadioGroup>
                       </fieldset>
 
-                      {formData.decisao === 'aprovar' && (
-                        <div className="animate-fade-in space-y-6 p-6 border-2 border-primary/20 bg-primary/5 rounded-xl">
+                      <ConditionalField show={formData.decisao === 'aprovar'}>
+                        <div className="space-y-6 p-6 border-2 border-primary/20 bg-primary/5 rounded-xl">
                           <h3 className="font-semibold text-lg flex items-center gap-2 text-primary">
                             <Video className="h-5 w-5" /> Agendamento da Entrevista Técnica
                           </h3>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                              <Label htmlFor="data" className="font-medium">
-                                Data do Encontro <span className="text-destructive">*</span>
-                              </Label>
+                            <DynamicFormField
+                              id="data"
+                              label="Data do Encontro"
+                              required
+                              touched={!!formData.agendamentoData}
+                              error={
+                                formData.agendamentoData &&
+                                !validators.minDate(formData.agendamentoData).isValid
+                                  ? validators.minDate(formData.agendamentoData).message
+                                  : undefined
+                              }
+                            >
                               <Input
-                                id="data"
+                                name="data"
                                 type="date"
                                 min={today}
                                 max={maxDate}
@@ -390,43 +406,55 @@ export default function AprovacaoPage() {
                                 onChange={(e) =>
                                   setFormData((p) => ({ ...p, agendamentoData: e.target.value }))
                                 }
-                                aria-required="true"
                                 className="min-h-[44px]"
                               />
-                            </div>
-                            <div className="space-y-2 relative">
-                              <Label htmlFor="hora" className="font-medium">
-                                Horário <span className="text-destructive">*</span>
-                              </Label>
-                              <div className="relative">
-                                <Input
-                                  id="hora"
-                                  type="time"
-                                  value={formData.agendamentoHora}
-                                  onChange={(e) =>
-                                    setFormData((p) => ({ ...p, agendamentoHora: e.target.value }))
-                                  }
-                                  aria-required="true"
-                                  className="min-h-[44px] pr-10"
-                                />
-                                <Clock className="absolute right-4 top-3 h-5 w-5 text-muted-foreground pointer-events-none" />
-                              </div>
-                            </div>
-                            <div className="space-y-2 sm:col-span-2">
-                              <Label htmlFor="email" className="font-medium">
-                                Email do Candidato para Convite{' '}
-                                <span className="text-destructive">*</span>
-                              </Label>
+                            </DynamicFormField>
+                            <DynamicFormField
+                              id="hora"
+                              label="Horário"
+                              required
+                              touched={!!formData.agendamentoHora}
+                              error={
+                                formData.agendamentoHora &&
+                                !validators.time(formData.agendamentoHora).isValid
+                                  ? validators.time(formData.agendamentoHora).message
+                                  : undefined
+                              }
+                              icon={<Clock className="h-5 w-5" />}
+                            >
                               <Input
-                                id="email"
-                                type="email"
-                                value={formData.agendamentoEmail}
+                                name="hora"
+                                type="time"
+                                value={formData.agendamentoHora}
                                 onChange={(e) =>
-                                  setFormData((p) => ({ ...p, agendamentoEmail: e.target.value }))
+                                  setFormData((p) => ({ ...p, agendamentoHora: e.target.value }))
                                 }
-                                aria-required="true"
-                                className="min-h-[44px]"
+                                className="min-h-[44px] pr-10"
                               />
+                            </DynamicFormField>
+                            <div className="sm:col-span-2">
+                              <DynamicFormField
+                                id="email"
+                                label="Email do Candidato para Convite"
+                                required
+                                touched={!!formData.agendamentoEmail}
+                                error={
+                                  formData.agendamentoEmail &&
+                                  !validators.email(formData.agendamentoEmail).isValid
+                                    ? validators.email(formData.agendamentoEmail).message
+                                    : undefined
+                                }
+                              >
+                                <Input
+                                  name="email"
+                                  type="email"
+                                  value={formData.agendamentoEmail}
+                                  onChange={(e) =>
+                                    setFormData((p) => ({ ...p, agendamentoEmail: e.target.value }))
+                                  }
+                                  className="min-h-[44px]"
+                                />
+                              </DynamicFormField>
                             </div>
                           </div>
 
@@ -468,44 +496,62 @@ export default function AprovacaoPage() {
                             </div>
                           </div>
                         </div>
-                      )}
+                      </ConditionalField>
 
-                      <fieldset className="space-y-2">
-                        <Label htmlFor="justificativaFinal" className="font-medium block">
-                          Parecer da Decisão <span className="text-destructive">*</span>
-                        </Label>
-                        <Textarea
-                          id="justificativaFinal"
-                          placeholder="Descreva o motivo da aprovação para entrevista ou rejeição do perfil..."
-                          maxLength={300}
-                          value={formData.justificativa}
-                          onChange={(e) =>
-                            setFormData((p) => ({ ...p, justificativa: e.target.value }))
-                          }
-                          aria-required="true"
-                          aria-invalid={formData.justificativa.length > 0 && !isJustificativaValid}
-                          aria-describedby={
-                            formData.justificativa.length > 0 && !isJustificativaValid
-                              ? 'justificativa-final-error'
-                              : undefined
-                          }
-                        />
-                        <div className="flex justify-between items-start mt-1 h-5">
-                          {formData.justificativa.length > 0 && !isJustificativaValid ? (
+                      <ConditionalField show={formData.decisao === 'rejeitar'}>
+                        <fieldset className="space-y-2">
+                          <Label htmlFor="justificativaFinal" className="font-medium block">
+                            Justificativa da Rejeição <span className="text-destructive">*</span>
+                          </Label>
+                          <Textarea
+                            id="justificativaFinal"
+                            placeholder="Descreva o motivo da rejeição do perfil..."
+                            maxLength={300}
+                            value={formData.justificativa}
+                            onChange={(e) =>
+                              setFormData((p) => ({ ...p, justificativa: e.target.value }))
+                            }
+                            aria-required="true"
+                            aria-invalid={
+                              formData.justificativa.length > 0 && !isJustificativaValid
+                            }
+                            aria-describedby={
+                              formData.justificativa.length > 0 && !isJustificativaValid
+                                ? 'justificativa-final-error'
+                                : undefined
+                            }
+                            className={
+                              formData.justificativa.length > 0 && !isJustificativaValid
+                                ? 'border-destructive focus-visible:ring-destructive'
+                                : ''
+                            }
+                          />
+                          <div className="flex justify-between items-start mt-1 h-5">
+                            {formData.justificativa.length > 0 && !isJustificativaValid ? (
+                              <span
+                                id="justificativa-final-error"
+                                className="text-destructive text-xs font-medium animate-fade-in"
+                              >
+                                Mínimo de 5 caracteres.
+                              </span>
+                            ) : (
+                              <span />
+                            )}
                             <span
-                              id="justificativa-final-error"
-                              className="text-destructive text-xs"
+                              className={cn(
+                                'text-xs font-medium transition-colors w-full text-right block',
+                                formData.justificativa.length >= 300
+                                  ? 'text-destructive'
+                                  : formData.justificativa.length >= 240
+                                    ? 'text-ring'
+                                    : 'opacity-60',
+                              )}
                             >
-                              Mínimo de 5 caracteres.
+                              {formData.justificativa.length}/300
                             </span>
-                          ) : (
-                            <span />
-                          )}
-                          <span className="text-xs opacity-60 w-full text-right block">
-                            {formData.justificativa.length}/300
-                          </span>
-                        </div>
-                      </fieldset>
+                          </div>
+                        </fieldset>
+                      </ConditionalField>
                     </div>
 
                     <div className="mt-8 pt-6 border-t flex flex-col sm:flex-row justify-end gap-4">
@@ -520,7 +566,10 @@ export default function AprovacaoPage() {
                       <Button
                         type="submit"
                         disabled={!validateForm()}
-                        className="w-full sm:w-auto min-h-[44px]"
+                        className={cn(
+                          'w-full sm:w-auto min-h-[44px] transition-colors',
+                          validateForm() ? 'bg-green-600 hover:bg-green-700' : '',
+                        )}
                       >
                         Confirmar Decisão Final
                       </Button>

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { avaliacaoService } from '@/services/avaliacao-service'
+import { cn } from '@/lib/utils'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { DynamicFormField, ConditionalField } from '@/components/ui/dynamic-form'
 import { useFormValidation } from '@/hooks/use-form-validation'
@@ -28,6 +29,7 @@ export function InteresseForm({ onSuccess }: { onSuccess: () => void }) {
     values,
     errors,
     touched,
+    isValid,
     handleChange,
     handleBlur,
     handleSubmit,
@@ -121,8 +123,11 @@ export function InteresseForm({ onSuccess }: { onSuccess: () => void }) {
 
           <Button
             type="submit"
-            disabled={isSubmitting || !values.confirmado}
-            className="w-full sm:w-auto hover:bg-green-600 transition-colors"
+            disabled={isSubmitting || !values.confirmado || !isValid}
+            className={cn(
+              'w-full sm:w-auto transition-colors',
+              isValid && values.confirmado ? 'bg-green-600 hover:bg-green-700' : '',
+            )}
           >
             {isSubmitting ? 'Confirmando...' : 'Confirmar Interesse'}
           </Button>

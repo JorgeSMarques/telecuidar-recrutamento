@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { Loader2, Trash2, Send } from 'lucide-react'
 
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -89,6 +90,7 @@ export function CaptureForm() {
     values,
     errors,
     touched,
+    isValid,
     handleChange,
     handleBlur,
     handleSubmit,
@@ -456,8 +458,11 @@ export function CaptureForm() {
         <div className="flex flex-col md:flex-row gap-4 mt-8 pt-4">
           <Button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full md:w-auto hover:bg-green-600 transition-colors"
+            disabled={isSubmitting || !isValid}
+            className={cn(
+              'w-full md:w-auto transition-colors',
+              isValid ? 'bg-green-600 hover:bg-green-700' : 'hover:bg-primary/90',
+            )}
           >
             {isSubmitting ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

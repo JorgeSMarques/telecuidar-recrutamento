@@ -1,109 +1,110 @@
-import { ReactNode, cloneElement, isValidElement } from 'react'
+import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { AlertTriangle, XCircle } from 'lucide-react'
 import { Label } from '@/components/ui/label'
-
-interface ConditionalFieldProps {
-  show: boolean
-  children: ReactNode
-}
-
-export function ConditionalField({ show, children }: ConditionalFieldProps) {
-  return (
-    <div
-      className={cn(
-        'transition-all duration-200 ease-in-out overflow-hidden',
-        show ? 'opacity-100 max-h-[1000px] mt-6' : 'opacity-0 max-h-0 mt-0',
-      )}
-      aria-hidden={!show}
-    >
-      {children}
-    </div>
-  )
-}
-
-interface DynamicFormFieldProps {
-  id: string
-  label: string
-  error?: string
-  warning?: string
-  touched?: boolean
-  maxLength?: number
-  currentLength?: number
-  children: ReactNode
-  required?: boolean
-  className?: string
-}
+import { AlertCircle, AlertTriangle } from 'lucide-react'
 
 export function DynamicFormField({
   id,
   label,
+  required,
+  touched,
   error,
   warning,
-  touched,
-  maxLength,
   currentLength,
+  maxLength,
   children,
-  required,
   className,
-}: DynamicFormFieldProps) {
-  const isInvalid = touched && !!error
-  const isWarning = touched && !error && !!warning
-
-  let counterColor = 'text-muted-foreground'
-  if (maxLength && currentLength !== undefined) {
-    const ratio = currentLength / maxLength
-    if (ratio >= 1) counterColor = 'text-destructive'
-    else if (ratio >= 0.8) counterColor = 'text-ring'
-  }
-
-  const child = isValidElement(children)
-    ? cloneElement(children as React.ReactElement<any>, {
-        id,
-        'aria-invalid': isInvalid,
-        'data-warning': isWarning,
-        'aria-describedby': isInvalid ? `${id}-error` : isWarning ? `${id}-warning` : undefined,
-        className: cn((children.props as any).className, (isInvalid || isWarning) && 'pr-10'),
-      })
-    : children
+  icon,
+}: {
+  id: string
+  label: string
+  required?: boolean
+  touched?: boolean
+  error?: string
+  warning?: string
+  currentLength?: number
+  maxLength?: number
+  children: React.ReactNode
+  className?: string
+  icon?: React.ReactNode
+}) {
+  const isError = touched && !!error
+  const isWarning = touched && !!warning && !error
 
   return (
     <div className={cn('space-y-2 relative', className)}>
-      <Label
-        htmlFor={id}
-        className={cn('font-medium', isInvalid && 'text-destructive', isWarning && 'text-ring')}
-      >
+      <Label htmlFor={id} className={isError ? 'text-destructive' : isWarning ? 'text-ring' : ''}>
         {label} {required && <span className="text-destructive">*</span>}
       </Label>
-
       <div className="relative">
-        {child}
-        {isInvalid && (
-          <XCircle className="absolute right-3 top-3 h-5 w-5 text-destructive pointer-events-none" />
+        {React.Children.map(children, (child) => {
+          if (React.isValidElement(child)) {
+            return React.cloneElement(child as React.ReactElement<any>, {
+              id,
+              'aria-invalid': isError,
+              'aria-required': required,
+              'aria-describedby': isError ? `${id}-error` : undefined,
+              className: cn(
+                child.props.className,
+                isError && 'border-destructive focus-visible:ring-destructive pr-10',
+                isWarning && 'border-ring focus-visible:ring-ring',
+              ),
+            })
+          }
+          return child
+        })}
+        {icon && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+            {icon}
+          </div>
         )}
-        {isWarning && (
-          <AlertTriangle className="absolute right-3 top-3 h-5 w-5 text-ring pointer-events-none" />
+        {isError && (
+          <AlertCircle
+            className={cn(
+              'absolute top-1/2 -translate-y-1/2 h-5 w-5 text-destructive pointer-events-none',
+              icon ? 'right-10' : 'right-3',
+            )}
+          />
         )}
       </div>
-
-      <div className="flex justify-between items-start min-h-[1.25rem]">
+      <div className="flex justify-between items-start min-h-[1.25rem] mt-1">
         <div className="flex-1">
-          {isInvalid ? (
-            <p id={`${id}-error`} className="text-sm text-destructive font-medium animate-fade-in">
+          {isError ? (
+            <span
+              id={`${id}-error`}
+              className="text-destructive text-sm font-medium animate-fade-in"
+            >
               {error}
-            </p>
+            </span>
           ) : isWarning ? (
-            <p id={`${id}-warning`} className="text-sm text-ring font-medium animate-fade-in">
-              {warning}
-            </p>
+            <span
+              id={`${id}-warning`}
+              className="text-ring text-sm font-medium animate-fade-in flex items-center gap-1"
+            >
+              <AlertTriangle className="h-4 w-4" /> {warning}
+            </span>
           ) : null}
         </div>
-        {maxLength && currentLength !== undefined && (
-          <div className={cn('text-xs ml-4 font-medium transition-colors', counterColor)}>
+        {currentLength !== undefined && maxLength !== undefined && (
+          <span
+            className={cn(
+              'text-xs ml-4 font-medium transition-colors',
+              currentLength >= maxLength
+                ? 'text-destructive'
+                : currentLength >= maxLength * 0.8
+                  ? 'text-ring'
+                  : 'opacity-60',
+            )}
+          >
             {currentLength}/{maxLength}
-          </div>
+          </span>
         )}
       </div>
     </div>
   )
+}
+
+export function ConditionalField({ show, children }: { show: boolean; children: React.ReactNode }) {
+  if (!show) return null
+  return <div className="animate-fade-in duration-200">{children}</div>
 }
