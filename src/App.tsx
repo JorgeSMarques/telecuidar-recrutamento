@@ -15,6 +15,7 @@ import NotFound from '@/pages/NotFound'
 const Dashboard = lazy(() => import('@/pages/dashboard'))
 const Captacao = lazy(() => import('@/pages/captacao'))
 const Candidatos = lazy(() => import('@/pages/candidatos'))
+const CandidatoDashboard = lazy(() => import('@/pages/candidatos/dashboard'))
 const Avaliacao = lazy(() => import('@/pages/avaliacao'))
 const Agendamento = lazy(() => import('@/pages/agendamento'))
 const Relatorios = lazy(() => import('@/pages/relatorios'))
@@ -47,6 +48,10 @@ const App = () => (
                 <Route element={<ProtectedRoute />}>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/configuracoes" element={<Configuracoes />} />
+                </Route>
+
+                <Route element={<ProtectedRoute allowedRoles={['Candidato']} />}>
+                  <Route path="/candidatos/dashboard" element={<CandidatoDashboard />} />
                 </Route>
 
                 <Route
