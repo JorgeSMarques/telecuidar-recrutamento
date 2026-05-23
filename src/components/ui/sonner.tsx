@@ -1,13 +1,13 @@
 import { useTheme } from 'next-themes'
 import { Toaster as Sonner } from 'sonner'
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react'
-import { useMobile } from '@/hooks/use-mobile'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = 'system' } = useTheme()
-  const isMobile = useMobile()
+  const isMobile = useIsMobile()
 
   return (
     <Sonner
