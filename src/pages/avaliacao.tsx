@@ -39,6 +39,7 @@ const getBadgeStyles = (status: string) => {
       return 'bg-ring/20 text-foreground border-transparent'
     case 'Busca Web Concluída':
     case 'Avaliação Recebida':
+    case 'Avaliação Concluída':
       return 'bg-primary/20 text-primary border-transparent'
     case 'Aprovado':
       return 'bg-primary text-primary-foreground border-transparent'
@@ -54,7 +55,11 @@ const getBadgeStyles = (status: string) => {
 export default function AvaliacaoPage() {
   const [candidatos, setCandidatos] = useState<CandidatoAvaliacao[]>([])
   const [loading, setLoading] = useState(true)
+
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [displayId, setDisplayId] = useState<string | null>(null)
+  const [isFadingOut, setIsFadingOut] = useState(false)
+  const [activeTab, setActiveTab] = useState('dados')
 
   const [filterStatus, setFilterStatus] = useState<string>('todos')
   const [filterData, setFilterData] = useState<string>('todos')
@@ -82,16 +87,29 @@ export default function AvaliacaoPage() {
     loadData()
   }, [])
 
+  const handleSelectCandidate = (id: string) => {
+    if (id === displayId) return
+    setSelectedId(id)
+    if (displayId) {
+      setIsFadingOut(true)
+      setTimeout(() => {
+        setIsFadingOut(false)
+        setDisplayId(id)
+        setActiveTab('dados')
+      }, 200)
+    } else {
+      setDisplayId(id)
+      setActiveTab('dados')
+    }
+  }
+
   useEffect(() => {
-    if (selectedId) {
-      const draftKey = `avaliacao-draft-${selectedId}`
+    if (displayId) {
+      const draftKey = `avaliacao-draft-${displayId}`
       const saved = localStorage.getItem(draftKey)
       if (saved) {
         toast('Você tem um formulário em rascunho. Deseja continuar?', {
-          action: {
-            label: 'Continuar',
-            onClick: () => setFormData(JSON.parse(saved)),
-          },
+          action: { label: 'Continuar', onClick: () => setFormData(JSON.parse(saved)) },
           cancel: {
             label: 'Descartar',
             onClick: () => {
@@ -110,18 +128,18 @@ export default function AvaliacaoPage() {
         setFormData({ notaValores: '', notaCompetencia: '', justificativa: '', recomendacao: '' })
       }
     }
-  }, [selectedId])
+  }, [displayId])
 
   useEffect(() => {
-    if (!selectedId) return
-    const draftKey = `avaliacao-draft-${selectedId}`
+    if (!displayId) return
+    const draftKey = `avaliacao-draft-${displayId}`
     const timer = setTimeout(() => {
       if (formData.justificativa || formData.notaValores || formData.notaCompetencia) {
         localStorage.setItem(draftKey, JSON.stringify(formData))
       }
     }, 500)
     return () => clearTimeout(timer)
-  }, [formData, selectedId])
+  }, [formData, displayId])
 
   const filteredCandidatos = candidatos.filter((c) => {
     if (filterStatus !== 'todos' && c.status !== filterStatus) return false
@@ -133,7 +151,8 @@ export default function AvaliacaoPage() {
     return true
   })
 
-  const selectedCandidato = candidatos.find((c) => c.id === selectedId)
+  const selectedCandidato = candidatos.find((c) => c.id === displayId)
+
   const isJustificativaRequerida = formData.recomendacao === 'Não recomendo'
   const isJustificativaValid = isJustificativaRequerida
     ? formData.justificativa.length >= 10 && formData.justificativa.length <= 300
@@ -147,13 +166,21 @@ export default function AvaliacaoPage() {
     (!isJustificativaRequerida || formData.justificativa.length > 0)
 
   const handleSubmit = async () => {
-    if (!selectedId || !isValid) return
+    if (!displayId || !isValid) return
     try {
-      await avaliacaoService.enviarAvaliacao(selectedId, formData)
+      await avaliacaoService.enviarAvaliacao(displayId, formData)
       toast.success('Avaliação enviada com sucesso!')
-      localStorage.removeItem(`avaliacao-draft-${selectedId}`)
-      setSelectedId(null)
-      loadData()
+
+      setCandidatos((prev) =>
+        prev.map((c) => (c.id === displayId ? { ...c, status: 'Avaliação Concluída' } : c)),
+      )
+      localStorage.removeItem(`avaliacao-draft-${displayId}`)
+
+      setTimeout(() => {
+        setCandidatos((prev) => prev.filter((c) => c.id !== displayId))
+        setDisplayId(null)
+        setSelectedId(null)
+      }, 1000)
     } catch (error) {
       toast.error('Erro ao enviar avaliação')
     }
@@ -161,7 +188,6 @@ export default function AvaliacaoPage() {
 
   return (
     <div className="flex flex-col w-full h-full">
-      {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-[2rem] font-bold tracking-tight">Avaliação de RH</h1>
@@ -201,7 +227,6 @@ export default function AvaliacaoPage() {
       </div>
 
       <div className="flex flex-col md:flex-row gap-6 lg:gap-8 relative flex-1">
-        {/* List */}
         <div className="w-full md:w-[40%] lg:w-[35%] flex flex-col gap-4">
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
@@ -222,13 +247,13 @@ export default function AvaliacaoPage() {
                     ? 'border-l-4 border-l-primary border-primary bg-muted/50'
                     : 'border-border',
                 )}
-                onClick={() => setSelectedId(c.id)}
+                onClick={() => handleSelectCandidate(c.id)}
                 tabIndex={0}
                 aria-current={selectedId === c.id ? 'true' : 'false'}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    setSelectedId(c.id)
+                    handleSelectCandidate(c.id)
                   }
                 }}
               >
@@ -248,7 +273,10 @@ export default function AvaliacaoPage() {
                     </div>
                     <Badge
                       variant="outline"
-                      className={cn('whitespace-nowrap', getBadgeStyles(c.status))}
+                      className={cn(
+                        'whitespace-nowrap transition-colors duration-300',
+                        getBadgeStyles(c.status),
+                      )}
                     >
                       {c.status}
                     </Badge>
@@ -259,371 +287,396 @@ export default function AvaliacaoPage() {
           )}
         </div>
 
-        {/* Details */}
-        <div className="w-full md:w-[60%] lg:w-[65%] md:sticky md:top-24 md:max-h-[calc(100vh-8rem)] overflow-y-auto rounded-xl border bg-card shadow-sm">
-          {!selectedCandidato ? (
-            <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-muted-foreground p-8 text-center">
+        <div className="w-full md:w-[60%] lg:w-[65%] md:sticky md:top-24 md:max-h-[calc(100vh-8rem)] overflow-y-auto rounded-xl border bg-card shadow-sm relative">
+          {!selectedCandidato && !isFadingOut ? (
+            <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-muted-foreground p-8 text-center animate-fade-in">
               <AlertCircle className="h-12 w-12 mb-4 opacity-20" />
               <p>Selecione um candidato na lista para realizar a avaliação</p>
             </div>
           ) : (
-            <div className="p-4 sm:p-6 lg:p-8 space-y-8">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-                <div>
-                  <h2 className="text-[2rem] font-bold tracking-tight leading-tight">
-                    {selectedCandidato.nome}
-                  </h2>
-                  <p className="text-muted-foreground text-lg mt-1">
-                    {selectedCandidato.especialidade}
-                  </p>
-                </div>
-                {selectedCandidato.buscaWeb.bloqueado && (
-                  <Badge
-                    className={cn(
-                      'px-3 py-1.5 self-start sm:self-auto text-sm',
-                      getBadgeStyles('BLOQUEADO'),
-                    )}
-                  >
-                    BLOQUEADO
-                  </Badge>
-                )}
-              </div>
-
-              <Tabs defaultValue="avaliacao" className="w-full">
-                <TabsList className="w-full">
-                  <TabsTrigger value="dados" className="flex-1">
-                    Dados Pessoais
-                  </TabsTrigger>
-                  <TabsTrigger value="form" className="flex-1">
-                    Formulário
-                  </TabsTrigger>
-                  <TabsTrigger value="web" className="flex-1">
-                    Busca Web
-                  </TabsTrigger>
-                  <TabsTrigger value="avaliacao" className="flex-1">
-                    Avaliação RH
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="dados" className="space-y-6 mt-6">
-                  <section>
-                    <legend className="text-base font-semibold mb-4">Informações de Contato</legend>
-                    <div className="grid gap-6 sm:grid-cols-2 bg-muted/20 p-6 rounded-xl border">
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Email</Label>
-                        <p className="font-medium mt-1">{selectedCandidato.dadosPessoais.email}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Telefone</Label>
-                        <p className="font-medium mt-1">
-                          {selectedCandidato.dadosPessoais.telefone}
-                        </p>
-                      </div>
-                    </div>
-                  </section>
-                  <section>
-                    <legend className="text-base font-semibold mb-4">
-                      Experiência Profissional
-                    </legend>
-                    <div className="bg-muted/20 p-6 rounded-xl border">
-                      <p className="font-medium leading-relaxed">
-                        {selectedCandidato.dadosPessoais.experiencia}
+            <div
+              className={cn(
+                'p-4 sm:p-6 lg:p-8 space-y-8 transition-opacity duration-200',
+                isFadingOut ? 'opacity-0' : 'opacity-100 animate-fade-in',
+              )}
+              style={{ animationDuration: '300ms' }}
+            >
+              {selectedCandidato && (
+                <>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                    <div>
+                      <h2 className="text-[2rem] font-bold tracking-tight leading-tight">
+                        {selectedCandidato.nome}
+                      </h2>
+                      <p className="text-muted-foreground text-lg mt-1">
+                        {selectedCandidato.especialidade}
                       </p>
                     </div>
-                  </section>
-                </TabsContent>
+                    {selectedCandidato.buscaWeb.bloqueado && (
+                      <Badge
+                        className={cn(
+                          'px-3 py-1.5 self-start sm:self-auto text-sm',
+                          getBadgeStyles('BLOQUEADO'),
+                        )}
+                      >
+                        BLOQUEADO
+                      </Badge>
+                    )}
+                  </div>
 
-                <TabsContent value="form" className="space-y-8 mt-6">
-                  <section>
-                    <legend className="text-base font-semibold mb-4">
-                      Autoavaliação de Valores
-                    </legend>
-                    <div className="space-y-3">
-                      {Object.entries(selectedCandidato.formulario.valores).map(([key, val]) => (
-                        <div
-                          key={key}
-                          className="flex justify-between items-center border-b pb-3 last:border-0 last:pb-0"
-                        >
-                          <span className="font-medium text-sm">{key}</span>
-                          <Badge
-                            variant="secondary"
-                            className="px-3 py-1 bg-secondary text-secondary-foreground"
-                          >
-                            {val} / 10
-                          </Badge>
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="w-full">
+                      <TabsTrigger value="dados" className="flex-1">
+                        Dados Pessoais
+                      </TabsTrigger>
+                      <TabsTrigger value="form" className="flex-1">
+                        Formulário
+                      </TabsTrigger>
+                      <TabsTrigger value="web" className="flex-1">
+                        Busca Web
+                      </TabsTrigger>
+                      <TabsTrigger value="avaliacao" className="flex-1">
+                        Avaliação RH
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="dados" className="space-y-6 mt-6 animate-tab-fade-in">
+                      <section>
+                        <legend className="text-base font-semibold mb-4">
+                          Informações de Contato
+                        </legend>
+                        <div className="grid gap-6 sm:grid-cols-2 bg-muted/20 p-6 rounded-xl border">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Email</Label>
+                            <p className="font-medium mt-1">
+                              {selectedCandidato.dadosPessoais.email}
+                            </p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Telefone</Label>
+                            <p className="font-medium mt-1">
+                              {selectedCandidato.dadosPessoais.telefone}
+                            </p>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </section>
-                  <section>
-                    <legend className="text-base font-semibold mb-4">Respostas Abertas</legend>
-                    <div className="space-y-6">
-                      {Object.entries(selectedCandidato.formulario.respostas).map(([key, val]) => (
-                        <div key={key} className="space-y-2">
-                          <Label className="font-medium text-sm">{key}</Label>
-                          <p className="text-sm text-foreground bg-muted/30 p-4 rounded-xl border leading-relaxed">
-                            {val}
+                      </section>
+                      <section>
+                        <legend className="text-base font-semibold mb-4">
+                          Experiência Profissional
+                        </legend>
+                        <div className="bg-muted/20 p-6 rounded-xl border">
+                          <p className="font-medium leading-relaxed">
+                            {selectedCandidato.dadosPessoais.experiencia}
                           </p>
                         </div>
-                      ))}
-                    </div>
-                  </section>
-                </TabsContent>
+                      </section>
+                    </TabsContent>
 
-                <TabsContent value="web" className="mt-6">
-                  <section>
-                    <div className="flex items-center justify-between mb-4">
-                      <legend className="text-base font-semibold">
-                        Resultados da Busca Automatizada
-                      </legend>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          selectedCandidato.buscaWeb.status === 'Concluída'
-                            ? getBadgeStyles('Busca Web Concluída')
-                            : getBadgeStyles('Formulário Recebido'),
-                        )}
-                      >
-                        {selectedCandidato.buscaWeb.status}
-                      </Badge>
-                    </div>
-                    <div
-                      className={cn(
-                        'p-6 rounded-xl border',
-                        selectedCandidato.buscaWeb.bloqueado
-                          ? 'border-destructive bg-destructive/5'
-                          : 'bg-muted/20',
-                      )}
-                    >
-                      {selectedCandidato.buscaWeb.ocorrencias &&
-                      selectedCandidato.buscaWeb.ocorrencias.length > 0 ? (
-                        <ul className="space-y-3">
-                          {selectedCandidato.buscaWeb.ocorrencias.map((oc, i) => (
-                            <li
-                              key={i}
-                              className="flex gap-3 items-start text-sm text-destructive p-4 rounded-lg bg-background border border-destructive/20 shadow-sm"
-                            >
-                              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-                              <span className="font-medium">{oc}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="flex items-center gap-3 text-sm text-primary p-4 rounded-lg bg-background border border-primary/20 shadow-sm">
-                          <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
-                          <span className="font-medium">
-                            Nenhuma ocorrência desabonadora encontrada nas fontes pesquisadas.
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                </TabsContent>
-
-                <TabsContent value="avaliacao" className="mt-6">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      handleSubmit()
-                    }}
-                  >
-                    <div className="mb-6">
-                      <legend className="text-base font-semibold">
-                        Formulário de Avaliação RH
-                      </legend>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Preencha com critério. Os dados serão enviados ao Diretor Técnico.
-                      </p>
-                    </div>
-
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <fieldset className="space-y-2">
-                          <Label htmlFor="notaValores" className="font-medium">
-                            Alinhamento com Valores (0-10){' '}
-                            <span className="text-destructive">*</span>
-                          </Label>
-                          <Input
-                            id="notaValores"
-                            type="number"
-                            min="0"
-                            max="10"
-                            step="0.5"
-                            placeholder="Ex: 8.5"
-                            value={formData.notaValores}
-                            onChange={(e) =>
-                              setFormData((p) => ({ ...p, notaValores: e.target.value }))
-                            }
-                            aria-required="true"
-                            className="min-h-[44px]"
-                          />
-                        </fieldset>
-                        <fieldset className="space-y-2">
-                          <Label htmlFor="notaCompetencia" className="font-medium">
-                            Competência Técnica (0-10) <span className="text-destructive">*</span>
-                          </Label>
-                          <Input
-                            id="notaCompetencia"
-                            type="number"
-                            min="0"
-                            max="10"
-                            step="0.5"
-                            placeholder="Ex: 9.0"
-                            value={formData.notaCompetencia}
-                            onChange={(e) =>
-                              setFormData((p) => ({ ...p, notaCompetencia: e.target.value }))
-                            }
-                            aria-required="true"
-                            className="min-h-[44px]"
-                          />
-                        </fieldset>
-                      </div>
-
-                      <fieldset className="space-y-2">
-                        <Label htmlFor="recomendacao" className="font-medium">
-                          Recomendação Final <span className="text-destructive">*</span>
-                        </Label>
-                        <Select
-                          value={formData.recomendacao}
-                          onValueChange={(val) => setFormData((p) => ({ ...p, recomendacao: val }))}
-                        >
-                          <SelectTrigger
-                            id="recomendacao"
-                            aria-required="true"
-                            className="min-h-[44px]"
-                          >
-                            <SelectValue placeholder="Selecione..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Recomendo fortemente">
-                              Recomendo fortemente
-                            </SelectItem>
-                            <SelectItem value="Recomendo com ressalvas">
-                              Recomendo com ressalvas
-                            </SelectItem>
-                            <SelectItem value="Não recomendo">Não recomendo</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </fieldset>
-
-                      <ConditionalField show={formData.recomendacao === 'Não recomendo'}>
-                        <fieldset className="space-y-2">
-                          <Label htmlFor="justificativa" className="font-medium block">
-                            Justificativa Obrigatória <span className="text-destructive">*</span>
-                          </Label>
-                          <Textarea
-                            id="justificativa"
-                            placeholder="Descreva detalhadamente o motivo da não recomendação..."
-                            maxLength={300}
-                            value={formData.justificativa}
-                            onChange={(e) =>
-                              setFormData((p) => ({ ...p, justificativa: e.target.value }))
-                            }
-                            aria-required="true"
-                            aria-invalid={
-                              formData.justificativa.length > 0 && !isJustificativaValid
-                            }
-                            aria-describedby={
-                              formData.justificativa.length > 0 && !isJustificativaValid
-                                ? 'justificativa-error'
-                                : undefined
-                            }
-                            className={
-                              formData.justificativa.length > 0 && !isJustificativaValid
-                                ? 'border-destructive focus-visible:ring-destructive'
-                                : ''
-                            }
-                          />
-                          <div className="flex justify-between items-start mt-1 h-5">
-                            {formData.justificativa.length > 0 && !isJustificativaValid ? (
-                              <span
-                                id="justificativa-error"
-                                className="text-destructive text-xs font-medium animate-fade-in"
+                    <TabsContent value="form" className="space-y-8 mt-6 animate-tab-fade-in">
+                      <section>
+                        <legend className="text-base font-semibold mb-4">
+                          Autoavaliação de Valores
+                        </legend>
+                        <div className="space-y-3">
+                          {Object.entries(selectedCandidato.formulario.valores).map(
+                            ([key, val]) => (
+                              <div
+                                key={key}
+                                className="flex justify-between items-center border-b pb-3 last:border-0 last:pb-0"
                               >
-                                Mínimo de 10 caracteres.
-                              </span>
-                            ) : (
-                              <span />
+                                <span className="font-medium text-sm">{key}</span>
+                                <Badge
+                                  variant="secondary"
+                                  className="px-3 py-1 bg-secondary text-secondary-foreground"
+                                >
+                                  {val as React.ReactNode} / 10
+                                </Badge>
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      </section>
+                      <section>
+                        <legend className="text-base font-semibold mb-4">Respostas Abertas</legend>
+                        <div className="space-y-6">
+                          {Object.entries(selectedCandidato.formulario.respostas).map(
+                            ([key, val]) => (
+                              <div key={key} className="space-y-2">
+                                <Label className="font-medium text-sm">{key}</Label>
+                                <p className="text-sm text-foreground bg-muted/30 p-4 rounded-xl border leading-relaxed">
+                                  {val as React.ReactNode}
+                                </p>
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      </section>
+                    </TabsContent>
+
+                    <TabsContent value="web" className="mt-6 animate-tab-fade-in">
+                      <section>
+                        <div className="flex items-center justify-between mb-4">
+                          <legend className="text-base font-semibold">
+                            Resultados da Busca Automatizada
+                          </legend>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              selectedCandidato.buscaWeb.status === 'Concluída'
+                                ? getBadgeStyles('Busca Web Concluída')
+                                : getBadgeStyles('Formulário Recebido'),
                             )}
-                            <span
-                              className={cn(
-                                'text-xs font-medium transition-colors w-full text-right block',
-                                formData.justificativa.length >= 300
-                                  ? 'text-destructive'
-                                  : formData.justificativa.length >= 240
-                                    ? 'text-ring'
-                                    : 'opacity-60',
-                              )}
-                            >
-                              {formData.justificativa.length}/300
-                            </span>
-                          </div>
-                        </fieldset>
-                      </ConditionalField>
+                          >
+                            {selectedCandidato.buscaWeb.status}
+                          </Badge>
+                        </div>
+                        <div
+                          className={cn(
+                            'p-6 rounded-xl border',
+                            selectedCandidato.buscaWeb.bloqueado
+                              ? 'border-destructive bg-destructive/5'
+                              : 'bg-muted/20',
+                          )}
+                        >
+                          {selectedCandidato.buscaWeb.ocorrencias &&
+                          selectedCandidato.buscaWeb.ocorrencias.length > 0 ? (
+                            <ul className="space-y-3">
+                              {selectedCandidato.buscaWeb.ocorrencias.map((oc, i) => (
+                                <li
+                                  key={i}
+                                  className="flex gap-3 items-start text-sm text-destructive p-4 rounded-lg bg-background border border-destructive/20 shadow-sm"
+                                >
+                                  <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+                                  <span className="font-medium">{oc}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <div className="flex items-center gap-3 text-sm text-primary p-4 rounded-lg bg-background border border-primary/20 shadow-sm">
+                              <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+                              <span className="font-medium">
+                                Nenhuma ocorrência desabonadora encontrada nas fontes pesquisadas.
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </section>
+                    </TabsContent>
 
-                      <ConditionalField
-                        show={
-                          formData.recomendacao !== 'Não recomendo' && formData.recomendacao !== ''
-                        }
+                    <TabsContent value="avaliacao" className="mt-6 animate-tab-fade-in">
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault()
+                          handleSubmit()
+                        }}
                       >
-                        <fieldset className="space-y-2">
-                          <Label htmlFor="justificativa" className="font-medium block">
-                            Justificativa Detalhada (Opcional)
-                          </Label>
-                          <Textarea
-                            id="justificativa"
-                            placeholder="Detalhes adicionais sobre as notas atribuídas..."
-                            maxLength={500}
-                            value={formData.justificativa}
-                            onChange={(e) =>
-                              setFormData((p) => ({ ...p, justificativa: e.target.value }))
-                            }
-                            aria-required="false"
-                            aria-invalid={
-                              formData.justificativa.length > 0 && !isJustificativaValid
-                            }
-                          />
-                          <div className="flex justify-end items-start mt-1 h-5">
-                            <span
-                              className={cn(
-                                'text-xs font-medium transition-colors',
-                                formData.justificativa.length >= 500
-                                  ? 'text-destructive'
-                                  : formData.justificativa.length >= 400
-                                    ? 'text-ring'
-                                    : 'opacity-60',
-                              )}
-                            >
-                              {formData.justificativa.length}/500
-                            </span>
-                          </div>
-                        </fieldset>
-                      </ConditionalField>
-                    </div>
+                        <div className="mb-6">
+                          <legend className="text-base font-semibold">
+                            Formulário de Avaliação RH
+                          </legend>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Preencha com critério. Os dados serão enviados ao Diretor Técnico.
+                          </p>
+                        </div>
 
-                    <div className="mt-8 pt-6 border-t flex flex-col sm:flex-row justify-end gap-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setSelectedId(null)}
-                        className="w-full sm:w-auto min-h-[44px]"
-                      >
-                        Cancelar Avaliação
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={!isValid}
-                        className={cn(
-                          'w-full sm:w-auto min-h-[44px] transition-colors',
-                          isValid ? 'bg-green-600 hover:bg-green-700' : '',
-                        )}
-                      >
-                        Enviar ao Diretor Técnico
-                      </Button>
-                    </div>
-                  </form>
-                </TabsContent>
-              </Tabs>
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <fieldset className="space-y-2">
+                              <Label htmlFor="notaValores" className="font-medium">
+                                Alinhamento com Valores (0-10){' '}
+                                <span className="text-destructive">*</span>
+                              </Label>
+                              <Input
+                                id="notaValores"
+                                type="number"
+                                min="0"
+                                max="10"
+                                step="0.5"
+                                placeholder="Ex: 8.5"
+                                value={formData.notaValores}
+                                onChange={(e) =>
+                                  setFormData((p) => ({ ...p, notaValores: e.target.value }))
+                                }
+                                aria-required="true"
+                                className="min-h-[44px]"
+                              />
+                            </fieldset>
+                            <fieldset className="space-y-2">
+                              <Label htmlFor="notaCompetencia" className="font-medium">
+                                Competência Técnica (0-10){' '}
+                                <span className="text-destructive">*</span>
+                              </Label>
+                              <Input
+                                id="notaCompetencia"
+                                type="number"
+                                min="0"
+                                max="10"
+                                step="0.5"
+                                placeholder="Ex: 9.0"
+                                value={formData.notaCompetencia}
+                                onChange={(e) =>
+                                  setFormData((p) => ({ ...p, notaCompetencia: e.target.value }))
+                                }
+                                aria-required="true"
+                                className="min-h-[44px]"
+                              />
+                            </fieldset>
+                          </div>
+
+                          <fieldset className="space-y-2">
+                            <Label htmlFor="recomendacao" className="font-medium">
+                              Recomendação Final <span className="text-destructive">*</span>
+                            </Label>
+                            <Select
+                              value={formData.recomendacao}
+                              onValueChange={(val) =>
+                                setFormData((p) => ({ ...p, recomendacao: val }))
+                              }
+                            >
+                              <SelectTrigger
+                                id="recomendacao"
+                                aria-required="true"
+                                className="min-h-[44px]"
+                              >
+                                <SelectValue placeholder="Selecione..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Recomendo fortemente">
+                                  Recomendo fortemente
+                                </SelectItem>
+                                <SelectItem value="Recomendo com ressalvas">
+                                  Recomendo com ressalvas
+                                </SelectItem>
+                                <SelectItem value="Não recomendo">Não recomendo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </fieldset>
+
+                          <ConditionalField show={formData.recomendacao === 'Não recomendo'}>
+                            <fieldset className="space-y-2 animate-fade-in">
+                              <Label htmlFor="justificativa" className="font-medium block">
+                                Justificativa Obrigatória{' '}
+                                <span className="text-destructive">*</span>
+                              </Label>
+                              <Textarea
+                                id="justificativa"
+                                placeholder="Descreva detalhadamente o motivo da não recomendação..."
+                                maxLength={300}
+                                value={formData.justificativa}
+                                onChange={(e) =>
+                                  setFormData((p) => ({ ...p, justificativa: e.target.value }))
+                                }
+                                aria-required="true"
+                                aria-invalid={
+                                  formData.justificativa.length > 0 && !isJustificativaValid
+                                }
+                                aria-describedby={
+                                  formData.justificativa.length > 0 && !isJustificativaValid
+                                    ? 'justificativa-error'
+                                    : undefined
+                                }
+                                className={
+                                  formData.justificativa.length > 0 && !isJustificativaValid
+                                    ? 'border-destructive focus-visible:ring-destructive'
+                                    : ''
+                                }
+                              />
+                              <div className="flex justify-between items-start mt-1 h-5">
+                                {formData.justificativa.length > 0 && !isJustificativaValid ? (
+                                  <span
+                                    id="justificativa-error"
+                                    className="text-destructive text-xs font-medium animate-fade-in"
+                                  >
+                                    Mínimo de 10 caracteres.
+                                  </span>
+                                ) : (
+                                  <span />
+                                )}
+                                <span
+                                  className={cn(
+                                    'text-xs font-medium transition-colors w-full text-right block',
+                                    formData.justificativa.length >= 300
+                                      ? 'text-destructive'
+                                      : formData.justificativa.length >= 240
+                                        ? 'text-ring'
+                                        : 'opacity-60',
+                                  )}
+                                >
+                                  {formData.justificativa.length}/300
+                                </span>
+                              </div>
+                            </fieldset>
+                          </ConditionalField>
+
+                          <ConditionalField
+                            show={
+                              formData.recomendacao !== 'Não recomendo' &&
+                              formData.recomendacao !== ''
+                            }
+                          >
+                            <fieldset className="space-y-2 animate-fade-in">
+                              <Label htmlFor="justificativa" className="font-medium block">
+                                Justificativa Detalhada (Opcional)
+                              </Label>
+                              <Textarea
+                                id="justificativa"
+                                placeholder="Detalhes adicionais sobre as notas atribuídas..."
+                                maxLength={500}
+                                value={formData.justificativa}
+                                onChange={(e) =>
+                                  setFormData((p) => ({ ...p, justificativa: e.target.value }))
+                                }
+                                aria-required="false"
+                                aria-invalid={
+                                  formData.justificativa.length > 0 && !isJustificativaValid
+                                }
+                              />
+                              <div className="flex justify-end items-start mt-1 h-5">
+                                <span
+                                  className={cn(
+                                    'text-xs font-medium transition-colors',
+                                    formData.justificativa.length >= 500
+                                      ? 'text-destructive'
+                                      : formData.justificativa.length >= 400
+                                        ? 'text-ring'
+                                        : 'opacity-60',
+                                  )}
+                                >
+                                  {formData.justificativa.length}/500
+                                </span>
+                              </div>
+                            </fieldset>
+                          </ConditionalField>
+                        </div>
+
+                        <div className="mt-8 pt-6 border-t flex flex-col sm:flex-row justify-end gap-4">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setDisplayId(null)
+                              setSelectedId(null)
+                            }}
+                            className="w-full sm:w-auto min-h-[44px]"
+                          >
+                            Cancelar Avaliação
+                          </Button>
+                          <Button
+                            type="submit"
+                            disabled={!isValid}
+                            className={cn(
+                              'w-full sm:w-auto min-h-[44px] transition-colors',
+                              isValid ? 'bg-green-600 hover:bg-green-700 text-white' : '',
+                            )}
+                          >
+                            Enviar ao Diretor Técnico
+                          </Button>
+                        </div>
+                      </form>
+                    </TabsContent>
+                  </Tabs>
+                </>
+              )}
             </div>
           )}
         </div>

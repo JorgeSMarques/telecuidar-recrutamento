@@ -12,7 +12,9 @@ export const VALORES_FIELDS = [
   { id: 'cidadania', label: 'Cidadania' },
 ] as const
 
-export function ValoresTab() {
+import { Button } from '@/components/ui/button'
+
+export function ValoresTab({ onNext }: { onNext: () => void }) {
   const {
     register,
     control,
@@ -73,6 +75,11 @@ export function ValoresTab() {
           </fieldset>
         )
       })}
+      <div className="flex justify-end pt-4">
+        <Button type="button" onClick={onNext}>
+          Próxima
+        </Button>
+      </div>
     </div>
   )
 }

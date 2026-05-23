@@ -23,32 +23,72 @@ export default function CandidatoDashboard() {
     return () => clearTimeout(timer)
   }, [])
 
+  // Simulated workflow progression
+  useEffect(() => {
+    if (currentStage === 4) {
+      // 3s simulated delay for "Busca Web"
+      const t = setTimeout(() => setCurrentStage(5), 3000)
+      return () => clearTimeout(t)
+    } else if (currentStage === 5) {
+      // 5s simulated delay for "Avaliação RH/Diretor"
+      const t = setTimeout(() => setCurrentStage(6), 5000)
+      return () => clearTimeout(t)
+    }
+  }, [currentStage])
+
   const steps = [
-    { id: 1, title: 'Captação', status: 'completed' as StepStatus, date: '20/05/2026' },
+    {
+      id: 1,
+      title: 'Captação',
+      status: 'completed' as StepStatus,
+      date: new Date().toLocaleDateString('pt-BR'),
+    },
     {
       id: 2,
       title: 'Manifestação de Interesse',
       status:
         currentStage === 2 ? 'active' : currentStage > 2 ? 'completed' : ('blocked' as StepStatus),
-      date: currentStage > 2 ? '21/05/2026' : undefined,
+      date: currentStage > 2 ? new Date().toLocaleDateString('pt-BR') : undefined,
     },
     {
       id: 3,
       title: 'Formulário de Avaliação',
       status:
         currentStage === 3 ? 'active' : currentStage > 3 ? 'completed' : ('blocked' as StepStatus),
+      date: currentStage > 3 ? new Date().toLocaleDateString('pt-BR') : undefined,
     },
     {
       id: 4,
       title: 'Busca Web',
       status:
         currentStage === 4 ? 'active' : currentStage > 4 ? 'completed' : ('waiting' as StepStatus),
+      date: currentStage > 4 ? new Date().toLocaleDateString('pt-BR') : undefined,
     },
-    { id: 5, title: 'Avaliação RH/Diretor', status: 'waiting' as StepStatus },
-    { id: 6, title: 'Aprovação e Agendamento', status: 'waiting' as StepStatus },
-    { id: 7, title: 'Rejeição', status: 'waiting' as StepStatus },
-    { id: 8, title: 'Entrevista', status: 'waiting' as StepStatus },
-    { id: 9, title: 'Aprovação Pós-Entrevista', status: 'waiting' as StepStatus },
+    {
+      id: 5,
+      title: 'Avaliação RH/Diretor',
+      status:
+        currentStage === 5 ? 'active' : currentStage > 5 ? 'completed' : ('waiting' as StepStatus),
+      date: currentStage > 5 ? new Date().toLocaleDateString('pt-BR') : undefined,
+    },
+    {
+      id: 6,
+      title: 'Aprovação e Agendamento',
+      status:
+        currentStage === 6 ? 'active' : currentStage > 6 ? 'completed' : ('waiting' as StepStatus),
+    },
+    {
+      id: 8,
+      title: 'Entrevista',
+      status:
+        currentStage === 8 ? 'active' : currentStage > 8 ? 'completed' : ('waiting' as StepStatus),
+    },
+    {
+      id: 9,
+      title: 'Aprovação Pós-Entrevista',
+      status:
+        currentStage === 9 ? 'active' : currentStage > 9 ? 'completed' : ('waiting' as StepStatus),
+    },
   ]
 
   if (loading) {
@@ -102,11 +142,30 @@ export default function CandidatoDashboard() {
           <div className="col-span-1 md:col-span-1 lg:col-span-5 flex flex-col gap-8">
             {currentStage === 2 && <InteresseForm onSuccess={() => setCurrentStage(3)} />}
             {currentStage === 3 && <AvaliacaoForm onSuccess={() => setCurrentStage(4)} />}
-            {currentStage >= 4 && (
+            {currentStage === 4 && (
               <div className="text-center p-8 border rounded-[var(--radius)] bg-card shadow-sm animate-fade-in-up">
-                <h3 className="font-semibold text-[1rem] mb-2">Etapa Concluída</h3>
+                <h3 className="font-semibold text-[1rem] mb-2">Busca Web em Andamento...</h3>
+                <p className="text-muted-foreground text-[0.875rem] flex items-center justify-center gap-2">
+                  <span className="animate-spin inline-block h-4 w-4 border-2 border-primary border-r-transparent rounded-full" />
+                  Estamos validando suas informações com bancos de dados públicos.
+                </p>
+              </div>
+            )}
+            {currentStage === 5 && (
+              <div className="text-center p-8 border rounded-[var(--radius)] bg-card shadow-sm animate-fade-in-up">
+                <h3 className="font-semibold text-[1rem] mb-2">Avaliação RH</h3>
+                <p className="text-muted-foreground text-[0.875rem] flex items-center justify-center gap-2">
+                  <span className="animate-spin inline-block h-4 w-4 border-2 border-primary border-r-transparent rounded-full" />
+                  Nossa equipe de RH e Diretoria está analisando seu perfil.
+                </p>
+              </div>
+            )}
+            {currentStage >= 6 && (
+              <div className="text-center p-8 border rounded-[var(--radius)] bg-card shadow-sm animate-fade-in-up">
+                <h3 className="font-semibold text-[1rem] mb-2 text-primary">Análise Concluída</h3>
                 <p className="text-muted-foreground text-[0.875rem]">
-                  Sua participação está sendo avaliada. Acompanhe a linha do tempo para novidades.
+                  Fique atento ao seu email para informações sobre a aprovação e agendamento da
+                  entrevista!
                 </p>
               </div>
             )}

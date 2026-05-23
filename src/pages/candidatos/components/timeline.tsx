@@ -21,7 +21,7 @@ export function Timeline({ steps }: TimelineProps) {
             <div
               key={step.id}
               className={cn(
-                'relative flex flex-col pb-8 pl-8 border-l-[4px] transition-colors duration-200 animate-timeline-step opacity-0',
+                'relative flex flex-col pb-8 pl-8 border-l-[4px] transition-colors duration-300 animate-timeline-step opacity-0',
                 isActive
                   ? 'border-primary bg-primary/5'
                   : isCompleted

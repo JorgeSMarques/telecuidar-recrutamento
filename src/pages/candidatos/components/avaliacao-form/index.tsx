@@ -59,7 +59,8 @@ export function AvaliacaoForm({ onSuccess }: { onSuccess: () => void }) {
   const onSubmit = async () => {
     const isValid = await methods.trigger()
     if (!isValid) {
-      toast.error('Preencha todos os campos obrigatórios.')
+      toast.error('Corrija os erros abaixo antes de enviar')
+      setActiveTab('valores')
       return
     }
     setLoading(true)
@@ -84,7 +85,25 @@ export function AvaliacaoForm({ onSuccess }: { onSuccess: () => void }) {
       </CardHeader>
       <CardContent>
         <FormProvider {...methods}>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={(val) => {
+              if (activeTab === 'valores' && val !== 'valores') {
+                methods.trigger('valores').then((valid) => {
+                  if (valid) setActiveTab(val)
+                  else toast.error('Responda todas as perguntas antes de prosseguir')
+                })
+              } else if (activeTab === 'competencia' && val === 'resumo') {
+                methods.trigger('competencia').then((valid) => {
+                  if (valid) setActiveTab(val)
+                  else toast.error('Preencha todas as respostas com mínimo 10 caracteres')
+                })
+              } else {
+                setActiveTab(val)
+              }
+            }}
+            className="w-full"
+          >
             <TabsList className="flex w-full">
               <TabsTrigger value="valores" className="flex-1">
                 Valores
@@ -98,17 +117,33 @@ export function AvaliacaoForm({ onSuccess }: { onSuccess: () => void }) {
             </TabsList>
             <TabsContent
               value="valores"
-              className="focus-visible:outline-none focus-visible:ring-0"
+              className="focus-visible:outline-none focus-visible:ring-0 animate-tab-fade-in"
             >
-              <ValoresTab />
+              <ValoresTab
+                onNext={async () => {
+                  const isValid = await methods.trigger('valores')
+                  if (isValid) setActiveTab('competencia')
+                  else toast.error('Responda todas as perguntas antes de prosseguir')
+                }}
+              />
             </TabsContent>
             <TabsContent
               value="competencia"
-              className="focus-visible:outline-none focus-visible:ring-0"
+              className="focus-visible:outline-none focus-visible:ring-0 animate-tab-fade-in"
             >
-              <CompetenciaTab />
+              <CompetenciaTab
+                onPrev={() => setActiveTab('valores')}
+                onNext={async () => {
+                  const isValid = await methods.trigger('competencia')
+                  if (isValid) setActiveTab('resumo')
+                  else toast.error('Preencha todas as respostas com mínimo 10 caracteres')
+                }}
+              />
             </TabsContent>
-            <TabsContent value="resumo" className="focus-visible:outline-none focus-visible:ring-0">
+            <TabsContent
+              value="resumo"
+              className="focus-visible:outline-none focus-visible:ring-0 animate-tab-fade-in"
+            >
               <ResumoTab
                 onEdit={() => setActiveTab('valores')}
                 onSubmit={onSubmit}

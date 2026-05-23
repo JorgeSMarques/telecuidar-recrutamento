@@ -12,8 +12,9 @@ export const COMPETENCIA_FIELDS = [
 
 import { AlertTriangle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
-export function CompetenciaTab() {
+export function CompetenciaTab({ onNext, onPrev }: { onNext: () => void; onPrev: () => void }) {
   const {
     register,
     watch,
@@ -79,6 +80,14 @@ export function CompetenciaTab() {
           </div>
         )
       })}
+      <div className="flex flex-col-reverse sm:flex-row justify-end gap-4 pt-4">
+        <Button type="button" variant="outline" onClick={onPrev}>
+          Voltar
+        </Button>
+        <Button type="button" onClick={onNext}>
+          Próxima
+        </Button>
+      </div>
     </div>
   )
 }
