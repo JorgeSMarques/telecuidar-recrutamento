@@ -19,19 +19,56 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/hooks/use-auth'
+import { Role } from '@/types'
 
-const items = [
-  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-  { title: 'Captação', url: '/captacao', icon: UserPlus },
-  { title: 'Candidatos', url: '/candidatos', icon: Users },
-  { title: 'Avaliação', url: '/avaliacao', icon: ClipboardCheck },
-  { title: 'Agendamento', url: '/agendamento', icon: CalendarDays },
-  { title: 'Relatórios', url: '/relatorios', icon: BarChart3 },
-  { title: 'Configurações', url: '/configuracoes', icon: Settings },
+const items: Array<{ title: string; url: string; icon: any; roles: Role[] }> = [
+  {
+    title: 'Dashboard',
+    url: '/',
+    icon: LayoutDashboard,
+    roles: ['Candidato', 'Gerente RH', 'Diretor Técnico'],
+  },
+  { title: 'Captação', url: '/captacao', icon: UserPlus, roles: ['Gerente RH', 'Diretor Técnico'] },
+  {
+    title: 'Candidatos',
+    url: '/candidatos',
+    icon: Users,
+    roles: ['Gerente RH', 'Diretor Técnico'],
+  },
+  {
+    title: 'Avaliação',
+    url: '/avaliacao',
+    icon: ClipboardCheck,
+    roles: ['Gerente RH', 'Diretor Técnico'],
+  },
+  {
+    title: 'Agendamento',
+    url: '/agendamento',
+    icon: CalendarDays,
+    roles: ['Gerente RH', 'Diretor Técnico'],
+  },
+  {
+    title: 'Relatórios',
+    url: '/relatorios',
+    icon: BarChart3,
+    roles: ['Gerente RH', 'Diretor Técnico'],
+  },
+  {
+    title: 'Configurações',
+    url: '/configuracoes',
+    icon: Settings,
+    roles: ['Candidato', 'Gerente RH', 'Diretor Técnico'],
+  },
 ]
 
 export function AppSidebar() {
   const location = useLocation()
+  const { user } = useAuth()
+
+  if (!user) return null
+
+  const filteredItems = items.filter((item) => item.roles.includes(user.role))
 
   return (
     <Sidebar>
@@ -40,7 +77,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => {
+              {filteredItems.map((item) => {
                 const isActive = location.pathname === item.url
                 return (
                   <SidebarMenuItem key={item.title}>

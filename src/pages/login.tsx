@@ -1,4 +1,5 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,14 +12,32 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { toast } from 'sonner'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { signIn } = useAuth()
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const from = location.state?.from?.pathname || '/'
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    toast.success('Login simulado com sucesso!')
-    navigate('/')
+    setLoading(true)
+
+    const { error } = await signIn(email, password)
+
+    setLoading(false)
+    if (error) {
+      toast.error('E-mail ou senha incorretos.')
+    } else {
+      toast.success('Login realizado com sucesso!')
+      navigate(from, { replace: true })
+    }
   }
 
   return (
@@ -31,7 +50,14 @@ export default function Login() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" placeholder="nome@exemplo.com" required />
+            <Input
+              id="email"
+              type="email"
+              placeholder="nome@exemplo.com"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -40,12 +66,18 @@ export default function Login() {
                 Esqueceu a senha?
               </a>
             </div>
-            <Input id="password" type="password" required />
+            <Input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full">
-            Entrar
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? 'Entrando...' : 'Entrar'}
           </Button>
           <div className="text-center text-sm text-muted-foreground">
             Não tem uma conta?{' '}

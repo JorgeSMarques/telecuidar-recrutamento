@@ -1,20 +1,16 @@
-import { useState } from 'react'
 import { Users, FileText, Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { MOCK_ROLES, MOCK_STATS, MOCK_CANDIDATES } from '@/mocks/data'
-import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts'
+import { MOCK_STATS, MOCK_CANDIDATES } from '@/mocks/data'
+import { BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function Dashboard() {
-  const [role, setRole] = useState('candidato')
+  const { user } = useAuth()
+  const role = user?.role || 'Candidato'
+
+  const getFirstName = () => user?.name?.split(' ')[0] || 'Usuário'
 
   const renderStats = () => (
     <div className="grid gap-4 md:grid-cols-3 mb-8">
@@ -55,29 +51,22 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Visão geral do processo de recrutamento.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Olá, {getFirstName()}</h1>
+          <p className="text-muted-foreground">
+            {role === 'Candidato'
+              ? 'Acompanhe o status do seu processo seletivo.'
+              : 'Visão geral do processo de recrutamento.'}
+          </p>
         </div>
-        <div className="w-full sm:w-64">
-          <Select value={role} onValueChange={setRole}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o perfil" />
-            </SelectTrigger>
-            <SelectContent>
-              {MOCK_ROLES.map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  {r.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <Badge variant="outline" className="px-3 py-1 bg-primary/5">
+          Perfil: {role}
+        </Badge>
       </div>
 
-      {role !== 'candidato' && renderStats()}
+      {role !== 'Candidato' && renderStats()}
 
       <div className="grid gap-6">
-        {role === 'candidato' && (
+        {role === 'Candidato' && (
           <Card>
             <CardHeader>
               <CardTitle>Meu Status</CardTitle>
@@ -117,7 +106,7 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {role === 'gerente_rh' && (
+        {role === 'Gerente RH' && (
           <Card>
             <CardHeader>
               <CardTitle>Candidatos Recentes</CardTitle>
@@ -144,7 +133,7 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {role === 'diretor_tecnico' && (
+        {role === 'Diretor Técnico' && (
           <Card>
             <CardHeader>
               <CardTitle>Eficiência de Contratação</CardTitle>
