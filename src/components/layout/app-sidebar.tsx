@@ -40,7 +40,13 @@ const items: Array<{ title: string; url: string; icon: any; roles: Role[] }> = [
     title: 'Avaliação',
     url: '/avaliacao',
     icon: ClipboardCheck,
-    roles: ['Gerente RH', 'Diretor Técnico'],
+    roles: ['Gerente RH'],
+  },
+  {
+    title: 'Aprovação',
+    url: '/aprovacao',
+    icon: ClipboardCheck,
+    roles: ['Diretor Técnico'],
   },
   {
     title: 'Agendamento',

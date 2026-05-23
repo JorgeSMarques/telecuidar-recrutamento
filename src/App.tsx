@@ -17,6 +17,7 @@ const Captacao = lazy(() => import('@/pages/captacao'))
 const Candidatos = lazy(() => import('@/pages/candidatos'))
 const CandidatoDashboard = lazy(() => import('@/pages/candidatos/dashboard'))
 const Avaliacao = lazy(() => import('@/pages/avaliacao'))
+const Aprovacao = lazy(() => import('@/pages/aprovacao'))
 const Agendamento = lazy(() => import('@/pages/agendamento'))
 const Relatorios = lazy(() => import('@/pages/relatorios'))
 const Configuracoes = lazy(() => import('@/pages/configuracoes'))
@@ -59,9 +60,14 @@ const App = () => (
                 >
                   <Route path="/captacao" element={<Captacao />} />
                   <Route path="/candidatos" element={<Candidatos />} />
-                  <Route path="/avaliacao" element={<Avaliacao />} />
                   <Route path="/agendamento" element={<Agendamento />} />
                   <Route path="/relatorios" element={<Relatorios />} />
+                </Route>
+                <Route element={<ProtectedRoute allowedRoles={['Gerente RH']} />}>
+                  <Route path="/avaliacao" element={<Avaliacao />} />
+                </Route>
+                <Route element={<ProtectedRoute allowedRoles={['Diretor Técnico']} />}>
+                  <Route path="/aprovacao" element={<Aprovacao />} />
                 </Route>
               </Route>
 

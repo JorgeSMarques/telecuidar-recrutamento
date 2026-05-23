@@ -50,3 +50,33 @@ export interface CaptureFormData {
   canal: string
   canalOutro?: string
 }
+
+export interface CandidatoBase {
+  id: string
+  nome: string
+  especialidade: string
+  data: string
+  status: string
+  email: string
+  telefone: string
+  buscaWeb: {
+    status: 'Concluída' | 'Pendente'
+    bloqueado: boolean
+    ocorrencias: string[]
+  }
+  formulario: {
+    experiencia: string
+    formacao: string
+  }
+}
+
+export interface CandidatoAvaliacao extends CandidatoBase {}
+
+export interface CandidatoAprovacao extends CandidatoBase {
+  avaliacaoRh: {
+    alinhamentoValores: number
+    competenciaTecnica: number
+    justificativa: string
+    recomendacao: string
+  }
+}
