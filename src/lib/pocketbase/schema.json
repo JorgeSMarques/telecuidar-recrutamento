@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-23T21:01:27.954Z",
+  "generatedAt": "2026-05-23T21:41:27.555Z",
   "collections": [
     {
       "name": "users",
@@ -50,6 +50,414 @@
         "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
         "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
       ]
+    },
+    {
+      "name": "candidates",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (userId = @request.auth.id || @request.auth.role = 'Gerente RH' || @request.auth.role = 'Diretor Técnico')",
+        "view": "@request.auth.id != '' && (userId = @request.auth.id || @request.auth.role = 'Gerente RH' || @request.auth.role = 'Diretor Técnico')",
+        "create": "@request.auth.id != '' && userId = @request.auth.id",
+        "update": "@request.auth.id != '' && userId = @request.auth.id",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "userId",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "email",
+          "type": "email",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "telefone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "linkedinUrl",
+          "type": "url",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "profissao",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Médico",
+            "Enfermeiro",
+            "Psicólogo",
+            "Nutricionista",
+            "Fisioterapeuta",
+            "Outro"
+          ]
+        },
+        {
+          "name": "especialidade",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "experienciaTotal",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Menos de 2 anos",
+            "2-5 anos",
+            "5-10 anos",
+            "10-15 anos",
+            "Mais de 15 anos"
+          ]
+        },
+        {
+          "name": "experienciaSUS",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Nenhuma", "Menos de 1 ano", "1-3 anos", "3-5 anos", "Mais de 5 anos"]
+        },
+        {
+          "name": "descricaoSUS",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "telemedicina",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Nenhuma", "Sim, tenho experiência"]
+        },
+        {
+          "name": "descricaoTelemedicina",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "canalCaptacao",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "LinkedIn",
+            "Google Ads",
+            "Instagram",
+            "E-mail",
+            "Contato Direto",
+            "Comunidade/Associação",
+            "Parceria",
+            "Outro"
+          ]
+        },
+        {
+          "name": "especifiqueOutro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Captação",
+            "Manifestação Pendente",
+            "Avaliação Pendente",
+            "Busca Web Pendente",
+            "Avaliação RH Pendente",
+            "Avaliação RH Concluída",
+            "Aprovação Diretor Pendente",
+            "Aprovado",
+            "Rejeitado",
+            "Contratado"
+          ]
+        },
+        {
+          "name": "dataCaptura",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "dataManifestacao",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "dataAvaliacao",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_candidates_userId ON candidates (userId)",
+        "CREATE UNIQUE INDEX idx_candidates_email ON candidates (email)",
+        "CREATE INDEX idx_candidates_status ON candidates (status)",
+        "CREATE INDEX idx_candidates_dataCaptura ON candidates (dataCaptura)"
+      ]
+    },
+    {
+      "name": "manifestacoes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (candidatoId.userId = @request.auth.id || @request.auth.role = 'Gerente RH' || @request.auth.role = 'Diretor Técnico')",
+        "view": "@request.auth.id != '' && (candidatoId.userId = @request.auth.id || @request.auth.role = 'Gerente RH' || @request.auth.role = 'Diretor Técnico')",
+        "create": "@request.auth.id != '' && candidatoId.userId = @request.auth.id",
+        "update": "@request.auth.id != '' && candidatoId.userId = @request.auth.id",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "candidatoId",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "candidates"
+        },
+        {
+          "name": "confirmado",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "telefone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "mensagem",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "dataConfirmacao",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_manifestacoes_candidatoId ON manifestacoes (candidatoId)"]
+    },
+    {
+      "name": "avaliacoes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (candidatoId.userId = @request.auth.id || @request.auth.role = 'Gerente RH' || @request.auth.role = 'Diretor Técnico')",
+        "view": "@request.auth.id != '' && (candidatoId.userId = @request.auth.id || @request.auth.role = 'Gerente RH' || @request.auth.role = 'Diretor Técnico')",
+        "create": "@request.auth.id != '' && candidatoId.userId = @request.auth.id",
+        "update": "@request.auth.id != '' && (candidatoId.userId = @request.auth.id || @request.auth.role = 'Gerente RH' || @request.auth.role = 'Diretor Técnico')",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "candidatoId",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "candidates"
+        },
+        {
+          "name": "respostasLikert",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "respostasAbertas",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notaAlinhamento",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "justificativaAlinhamento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notaCompetencia",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "justificativaCompetencia",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "recomendacao",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Recomendado", "Não Recomendado"]
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_avaliacoes_candidatoId ON avaliacoes (candidatoId)"]
+    },
+    {
+      "name": "interviews",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (candidatoId.userId = @request.auth.id || @request.auth.role = 'Gerente RH' || @request.auth.role = 'Diretor Técnico')",
+        "view": "@request.auth.id != '' && (candidatoId.userId = @request.auth.id || @request.auth.role = 'Gerente RH' || @request.auth.role = 'Diretor Técnico')",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'Gerente RH' || @request.auth.role = 'Diretor Técnico')",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'Gerente RH' || @request.auth.role = 'Diretor Técnico')",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "candidatoId",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "candidates"
+        },
+        {
+          "name": "dataAgendada",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "horarioAgendado",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "emailConfirmacao",
+          "type": "email",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "criarCalendar",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "enviarWhatsApp",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "linkMeet",
+          "type": "url",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "realizada",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "aprovacaoFinal",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_interviews_candidatoId ON interviews (candidatoId)"]
     }
   ]
 }
