@@ -14,6 +14,7 @@ import NotFound from '@/pages/NotFound'
 
 const Dashboard = lazy(() => import('@/pages/dashboard'))
 const Captacao = lazy(() => import('@/pages/captacao'))
+const CaptacaoForm = lazy(() => import('@/pages/captacao/form'))
 const Candidatos = lazy(() => import('@/pages/candidatos'))
 const CandidatoDashboard = lazy(() => import('@/pages/candidatos/dashboard'))
 const Avaliacao = lazy(() => import('@/pages/avaliacao'))
@@ -59,6 +60,7 @@ const App = () => (
                   element={<ProtectedRoute allowedRoles={['Gerente RH', 'Diretor Técnico']} />}
                 >
                   <Route path="/captacao" element={<Captacao />} />
+                  <Route path="/captacao/form" element={<CaptacaoForm />} />
                   <Route path="/candidatos" element={<Candidatos />} />
                   <Route path="/agendamento" element={<Agendamento />} />
                   <Route path="/relatorios" element={<Relatorios />} />
