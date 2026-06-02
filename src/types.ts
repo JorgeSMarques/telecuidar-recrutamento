@@ -53,27 +53,34 @@ export interface CaptureFormData {
 
 export interface CandidatoBase {
   id: string
+  userId: string
   nome: string
-  especialidade: string
-  data: string
-  status: string
   email: string
   telefone: string
-  buscaWeb: {
-    status: 'Concluída' | 'Pendente'
-    bloqueado: boolean
-    ocorrencias: string[]
-  }
-  formulario: {
-    experiencia: string
-    formacao: string
-  }
+  linkedinUrl?: string
+  profissao: string
+  especialidade: string
+  experienciaTotal?: string
+  experienciaSUS?: string
+  descricaoSUS?: string
+  telemedicina?: string
+  descricaoTelemedicina?: string
+  canalCaptacao?: string
+  especifiqueOutro?: string
+  status: string
+  dataCaptura: string
+  dataManifestacao?: string
+  dataAvaliacao?: string
+  created: string
+  updated: string
+  curriculo?: string
+  textoCurriculo?: string
 }
 
 export interface CandidatoAvaliacao extends CandidatoBase {}
 
 export interface CandidatoAprovacao extends CandidatoBase {
-  avaliacaoRh: {
+  avaliacaoRh?: {
     alinhamentoValores: number
     competenciaTecnica: number
     justificativa: string
