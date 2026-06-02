@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-02T16:53:16.873Z",
+  "generatedAt": "2026-06-02T17:00:04.865Z",
   "collections": [
     {
       "name": "users",
@@ -234,6 +234,18 @@
         {
           "name": "textoCurriculo",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "buscaWeb",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "formulario",
+          "type": "json",
           "required": false,
           "system": false
         }

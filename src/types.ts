@@ -75,6 +75,8 @@ export interface CandidatoBase {
   updated: string
   curriculo?: string
   textoCurriculo?: string
+  buscaWeb?: Record<string, any>
+  formulario?: Record<string, any>
 }
 
 export interface CandidatoAvaliacao extends CandidatoBase {}
