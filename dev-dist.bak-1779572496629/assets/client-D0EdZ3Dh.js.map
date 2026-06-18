@@ -1,1 +1,0 @@
-{"version":3,"file":"client-D0EdZ3Dh.js","names":[],"sources":["../../src/lib/pocketbase/client.ts"],"sourcesContent":["import PocketBase from 'pocketbase'\n\nconst pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL)\npb.autoCancellation(false)\n\nexport default pb\n"],"mappings":";;;;AAEA,IAAM,KAAK,IAAI,OAAA,kEAA+C;AAC9D,GAAG,iBAAiB,MAAM"}
