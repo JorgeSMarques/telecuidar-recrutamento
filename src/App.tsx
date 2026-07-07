@@ -13,7 +13,7 @@ import { AuthProvider } from '@/hooks/use-auth'
 import NotFound from '@/pages/NotFound'
 
 const Dashboard = lazy(() => import('@/pages/dashboard'))
-const Captacao = lazy(() => import('@/pages/captacao'))
+const Captacao = lazy(() => import('@/pages/captacao/index'))
 const CaptacaoForm = lazy(() => import('@/pages/captacao/form'))
 const Candidatos = lazy(() => import('@/pages/candidatos'))
 const CandidatoDashboard = lazy(() => import('@/pages/candidatos/dashboard'))
