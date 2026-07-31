@@ -1,6 +1,21 @@
 routerAdd('POST', '/backend/v1/public/candidates/capture', (e) => {
   const body = e.requestInfo().body || {}
 
+  // Check for duplicate email before saving
+  if (body['email'] && body['email'] !== '') {
+    try {
+      $app.findFirstRecordByData('candidates', 'email', body['email'])
+      throw new BadRequestError('Dados inválidos', {
+        email: new ValidationError(
+          'validation_not_unique',
+          'Este e-mail já está cadastrado. Utilize outro ou entre em contato conosco.',
+        ),
+      })
+    } catch (err) {
+      if (err instanceof BadRequestError) throw err
+    }
+  }
+
   const collection = $app.findCollectionByNameOrId('candidates')
   const record = new Record(collection)
 
@@ -31,7 +46,7 @@ routerAdd('POST', '/backend/v1/public/candidates/capture', (e) => {
   try {
     $app.save(record)
   } catch (err) {
-    return e.badRequestError('Dados inválidos. Verifique os campos e tente novamente.')
+    throw new BadRequestError('Dados inválidos. Verifique os campos e tente novamente.')
   }
 
   return e.json(200, {

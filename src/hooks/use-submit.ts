@@ -97,11 +97,14 @@ export function useSubmit<TArgs extends any[], TRes>(
           } else {
             setIsLoading(false)
             setError(err)
-            toast.error(
-              'Não conseguimos processar sua solicitação. Contate o suporte em suporte@telecuidar.com.br',
-              { duration: Infinity, action: { label: 'Fechar', onClick: () => toast.dismiss() } },
-            )
-            options?.onError?.(err)
+            if (options?.onError) {
+              options.onError(err)
+            } else {
+              toast.error(
+                'Não conseguimos processar sua solicitação. Contate o suporte em suporte@telecuidar.com.br',
+                { duration: Infinity, action: { label: 'Fechar', onClick: () => toast.dismiss() } },
+              )
+            }
           }
         }
       }

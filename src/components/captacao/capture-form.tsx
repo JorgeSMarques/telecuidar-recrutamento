@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
+import { ClientResponseError } from 'pocketbase'
 import { useDraftForm } from '@/hooks/use-draft-form'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
 import { UnsavedChangesModal } from '@/components/unsaved-changes-modal'
@@ -162,6 +163,8 @@ export function CaptureForm({ redirectAfterSuccess }: { redirectAfterSuccess?: s
       const fieldErrs = extractFieldErrors(error)
       if (Object.keys(fieldErrs).length > 0) {
         toast.error(getErrorMessage(error), { duration: 6000 })
+      } else if (!(error instanceof ClientResponseError) || error.status === 0 || !error.status) {
+        toast.error('Erro de conexão. Tente novamente mais tarde.', { duration: 6000 })
       } else {
         toast.error('Não foi possível enviar a candidatura. Tente novamente.', {
           duration: 6000,
