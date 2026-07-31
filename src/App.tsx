@@ -7,11 +7,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import { MainLayout } from '@/components/layout/main-layout'
 import { AuthLayout } from '@/components/layout/auth-layout'
+import { PublicLayout } from '@/components/layout/public-layout'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { ProtectedRoute } from '@/components/protected-route'
 import { AuthProvider } from '@/hooks/use-auth'
 import NotFound from '@/pages/NotFound'
 
+const Landing = lazy(() => import('@/pages/landing'))
+const Candidatar = lazy(() => import('@/pages/candidatar'))
 const Dashboard = lazy(() => import('@/pages/dashboard'))
 const Captacao = lazy(() => import('@/pages/captacao/index'))
 const CaptacaoForm = lazy(() => import('@/pages/captacao/form'))
@@ -41,6 +44,11 @@ const App = () => (
           <Sonner />
           <Suspense fallback={<Fallback />}>
             <Routes>
+              <Route element={<PublicLayout />}>
+                <Route path="/" element={<Landing />} />
+                <Route path="/candidatar" element={<Candidatar />} />
+              </Route>
+
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
@@ -48,7 +56,7 @@ const App = () => (
 
               <Route element={<MainLayout />}>
                 <Route element={<ProtectedRoute />}>
-                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/configuracoes" element={<Configuracoes />} />
                 </Route>
 

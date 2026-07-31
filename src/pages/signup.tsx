@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
+import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -10,155 +12,99 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useAuth } from '@/hooks/use-auth'
+
+const ROLES = ['Candidato', 'Gerente RH', 'Diretor Técnico']
 
 export default function Signup() {
   const navigate = useNavigate()
   const { signUp } = useAuth()
-
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    passwordConfirm: '',
-    role: 'Candidato',
-  })
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState('Candidato')
   const [loading, setLoading] = useState(false)
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, [e.target.id]: e.target.value }))
-  }
-
-  const handleRoleChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, role: value }))
-  }
-
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!formData.name.trim()) {
-      return toast.error('O nome é obrigatório.')
-    }
-
-    if (formData.password.length < 8) {
-      return toast.error('A senha deve ter pelo menos 8 caracteres.')
-    }
-
-    if (formData.password !== formData.passwordConfirm) {
-      return toast.error('As senhas não coincidem.')
-    }
-
     setLoading(true)
-    const { error } = await signUp(formData)
+    const { error } = await signUp({
+      name,
+      email,
+      password,
+      passwordConfirm: password,
+      role,
+    })
     setLoading(false)
-
     if (error) {
-      const emailError = error?.response?.data?.email?.code
-      if (emailError === 'validation_invalid_email') {
-        toast.error('Formato de e-mail inválido.')
-      } else if (
-        emailError === 'validation_not_unique' ||
-        emailError === 'validation_invalid_format'
-      ) {
-        toast.error('Este e-mail já está cadastrado ou é inválido.')
-      } else {
-        toast.error('Erro ao criar conta. Verifique os dados e tente novamente.')
-      }
+      toast.error('Não foi possível criar a conta. Verifique os dados.')
     } else {
-      toast.success('Conta criada com sucesso!')
-      navigate('/')
+      navigate('/dashboard', { replace: true })
     }
   }
 
   return (
-    <Card className="shadow-elevation border-border/50 w-full max-w-md mx-auto">
-      <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-2xl font-bold">Criar uma conta</CardTitle>
-        <CardDescription>Preencha os dados abaixo para se cadastrar</CardDescription>
+    <Card className="border shadow-subtle">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl">Criar Conta</CardTitle>
+        <CardDescription>Preencha os dados para se cadastrar no sistema</CardDescription>
       </CardHeader>
-      <form onSubmit={handleSignup}>
-        <CardContent className="space-y-4">
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nome completo</Label>
-            <Input
-              id="name"
-              placeholder="João da Silva"
-              required
-              value={formData.name}
-              onChange={handleChange}
-            />
+            <Label htmlFor="name">Nome</Label>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
             <Input
               id="email"
               type="email"
-              placeholder="nome@exemplo.com"
+              placeholder="seu@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
-              value={formData.email}
-              onChange={handleChange}
             />
           </div>
-
+          <div className="space-y-2">
+            <Label htmlFor="password">Senha</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="role">Perfil</Label>
-            <Select value={formData.role} onValueChange={handleRoleChange}>
+            <Select value={role} onValueChange={setRole}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione um perfil" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Candidato">Candidato</SelectItem>
-                <SelectItem value="Gerente RH">Gerente RH</SelectItem>
-                <SelectItem value="Diretor Técnico">Diretor Técnico</SelectItem>
+                {ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="passwordConfirm">Confirmar</Label>
-              <Input
-                id="passwordConfirm"
-                type="password"
-                required
-                value={formData.passwordConfirm}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Criando conta...' : 'Cadastrar'}
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Criar Conta
           </Button>
-          <div className="text-center text-sm text-muted-foreground">
-            Já tem uma conta?{' '}
+          <p className="text-center text-sm text-muted-foreground">
+            Já tem conta?{' '}
             <Link to="/login" className="text-primary hover:underline">
-              Faça login
+              Entrar
             </Link>
-          </div>
-        </CardFooter>
-      </form>
+          </p>
+        </form>
+      </CardContent>
     </Card>
   )
 }

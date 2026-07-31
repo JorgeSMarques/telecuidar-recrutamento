@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useDraftForm } from '@/hooks/use-draft-form'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
@@ -23,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { DynamicFormField, ConditionalField } from '@/components/ui/dynamic-form'
 import { useFormValidation } from '@/hooks/use-form-validation'
 import { submitCaptureForm } from '@/services/captureService'
+import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 
 const formSchema = z
   .object({
@@ -88,7 +90,8 @@ const OPT = {
   ],
 }
 
-export function CaptureForm() {
+export function CaptureForm({ redirectAfterSuccess }: { redirectAfterSuccess?: string } = {}) {
+  const navigate = useNavigate()
   const {
     values,
     errors,
@@ -151,6 +154,19 @@ export function CaptureForm() {
       setTouched({})
       clearDraft()
       window.scrollTo({ top: 0, behavior: 'smooth' })
+      if (redirectAfterSuccess) {
+        setTimeout(() => navigate(redirectAfterSuccess), 2500)
+      }
+    },
+    onError: (error: any) => {
+      const fieldErrs = extractFieldErrors(error)
+      if (Object.keys(fieldErrs).length > 0) {
+        toast.error(getErrorMessage(error), { duration: 6000 })
+      } else {
+        toast.error('Não foi possível enviar a candidatura. Tente novamente.', {
+          duration: 6000,
+        })
+      }
     },
   })
 
