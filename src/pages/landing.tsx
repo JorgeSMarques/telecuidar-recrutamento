@@ -133,7 +133,10 @@ export default function Landing() {
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-primary/5 to-background">
+      <section
+        id="inicio"
+        className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-primary/5 to-background scroll-mt-16"
+      >
         <div className="absolute inset-0 bg-grid-pattern opacity-[0.03]" />
         <div className="container mx-auto px-4 py-20 md:py-32 relative">
           <div className="max-w-3xl mx-auto text-center">
@@ -196,7 +199,7 @@ export default function Landing() {
       </section>
 
       {/* About Section */}
-      <section className="container mx-auto px-4 py-16 md:py-24">
+      <section id="sobre" className="container mx-auto px-4 py-16 md:py-24 scroll-mt-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
             <Badge variant="secondary" className="mb-4">
@@ -256,7 +259,7 @@ export default function Landing() {
       </section>
 
       {/* Services Section */}
-      <section className="bg-primary/5 border-y">
+      <section id="servicos" className="bg-primary/5 border-y scroll-mt-16">
         <div className="container mx-auto px-4 py-16 md:py-24">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <Badge variant="secondary" className="mb-4">
@@ -318,7 +321,7 @@ export default function Landing() {
       </section>
 
       {/* How It Works Section */}
-      <section className="bg-primary/5 border-y">
+      <section id="como-funciona" className="bg-primary/5 border-y scroll-mt-16">
         <div className="container mx-auto px-4 py-16 md:py-24">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <Badge variant="secondary" className="mb-4">
@@ -373,7 +376,7 @@ export default function Landing() {
       </section>
 
       {/* Contact Section */}
-      <section className="bg-primary/5 border-y">
+      <section id="contato" className="bg-primary/5 border-y scroll-mt-16">
         <div className="container mx-auto px-4 py-16 md:py-24">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div>
