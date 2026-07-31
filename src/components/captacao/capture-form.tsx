@@ -6,7 +6,7 @@ import { useDraftForm } from '@/hooks/use-draft-form'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
 import { UnsavedChangesModal } from '@/components/unsaved-changes-modal'
 import { toast } from 'sonner'
-import { Loader2, Trash2, Send } from 'lucide-react'
+import { Loader2, Trash2, Send, UploadCloud, FileText, X } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -107,6 +107,7 @@ export function CaptureForm({ redirectAfterSuccess }: { redirectAfterSuccess?: s
   } = useFormValidation(defaultValues, formSchema)
 
   const isDirty = JSON.stringify(values) !== JSON.stringify(defaultValues)
+  const [curriculoFile, setCurriculoFile] = useState<File | null>(null)
 
   const { isHydrated, clearDraft, handleFocus } = useDraftForm({
     key: 'captacao-draft',
@@ -154,6 +155,7 @@ export function CaptureForm({ redirectAfterSuccess }: { redirectAfterSuccess?: s
       setValues(defaultValues)
       setTouched({})
       clearDraft()
+      setCurriculoFile(null)
       window.scrollTo({ top: 0, behavior: 'smooth' })
       if (redirectAfterSuccess) {
         setTimeout(() => navigate(redirectAfterSuccess), 2500)
@@ -523,6 +525,51 @@ export function CaptureForm({ redirectAfterSuccess }: { redirectAfterSuccess?: s
             </div>
           </fieldset>
 
+          <fieldset className="mb-8 border-b border-border pb-8 last:mb-0 last:border-0 last:pb-0">
+            <legend className="text-[1.125rem] font-semibold mb-4 w-full">Currículo</legend>
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Upload de Currículo (opcional)
+                </label>
+                {!curriculoFile ? (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors">
+                    <div className="flex flex-col items-center gap-2">
+                      <UploadCloud className="w-8 h-8 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        Clique para selecionar um arquivo (PDF, DOC, DOCX — máx. 5MB)
+                      </span>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) setCurriculoFile(file)
+                        e.target.value = ''
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <div className="flex items-center gap-3 bg-muted/50 border rounded-lg p-4">
+                    <div className="bg-primary/10 p-2 rounded shrink-0">
+                      <FileText className="w-6 h-6 text-primary" />
+                    </div>
+                    <p className="text-sm font-medium truncate flex-1">{curriculoFile.name}</p>
+                    <button
+                      type="button"
+                      onClick={() => setCurriculoFile(null)}
+                      className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </fieldset>
+
           <div className="flex flex-col md:flex-row gap-4 mt-8 pt-4">
             <Button
               type="submit"
@@ -550,6 +597,7 @@ export function CaptureForm({ redirectAfterSuccess }: { redirectAfterSuccess?: s
                 setValues(defaultValues)
                 setTouched({})
                 clearDraft()
+                setCurriculoFile(null)
               }}
             >
               <Trash2 className="w-4 h-4 mr-2" />
@@ -564,6 +612,7 @@ export function CaptureForm({ redirectAfterSuccess }: { redirectAfterSuccess?: s
           clearDraft()
           setValues(defaultValues)
           setTouched({})
+          setCurriculoFile(null)
         }}
       />
     </Card>

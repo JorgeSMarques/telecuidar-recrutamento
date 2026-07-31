@@ -1,20 +1,18 @@
 import pb from '@/lib/pocketbase/client'
 
 export async function submitCaptureForm(data: any) {
-  const payload = {
-    nome: data.nome,
-    email: data.email,
-    telefone: data.telefone,
-    linkedinUrl: data.linkedin,
-    profissao: data.profissao,
-    especialidade: data.especialidade,
-    experienciaTotal: data.experienciaTotal,
-    experienciaSUS: data.experienciaSus,
-    descricaoSUS: data.descricaoSus,
-    telemedicina: data.experienciaTelemedicina,
-    descricaoTelemedicina: data.descricaoTelemedicina,
-    canalCaptacao: data.canal,
-    especifiqueOutro: data.canalOutro,
+  const { curriculo, ...payload } = data
+
+  if (curriculo instanceof File) {
+    const formData = new FormData()
+    Object.entries(payload).forEach(([key, value]) => {
+      formData.append(key, String(value ?? ''))
+    })
+    formData.append('curriculo', curriculo)
+    return pb.send('/backend/v1/public/candidates/capture', {
+      method: 'POST',
+      body: formData,
+    })
   }
 
   return pb.send('/backend/v1/public/candidates/capture', {
