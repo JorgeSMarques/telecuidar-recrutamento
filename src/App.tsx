@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { Toaster as ShadcnToaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -35,57 +35,68 @@ const Fallback = () => (
   </div>
 )
 
+const router = createBrowserRouter([
+  {
+    element: <PublicLayout />,
+    children: [
+      { path: '/', element: <Landing /> },
+      { path: '/candidatar', element: <Candidatar /> },
+    ],
+  },
+  {
+    element: <AuthLayout />,
+    children: [
+      { path: '/login', element: <Login /> },
+      { path: '/signup', element: <Signup /> },
+    ],
+  },
+  {
+    element: <MainLayout />,
+    children: [
+      {
+        element: <ProtectedRoute />,
+        children: [
+          { path: '/dashboard', element: <Dashboard /> },
+          { path: '/configuracoes', element: <Configuracoes /> },
+        ],
+      },
+      {
+        element: <ProtectedRoute allowedRoles={['Candidato']} />,
+        children: [{ path: '/candidatos/dashboard', element: <CandidatoDashboard /> }],
+      },
+      {
+        element: <ProtectedRoute allowedRoles={['Gerente RH', 'Diretor Técnico']} />,
+        children: [
+          { path: '/captacao', element: <Captacao /> },
+          { path: '/captacao/form', element: <CaptacaoForm /> },
+          { path: '/candidatos', element: <Candidatos /> },
+          { path: '/agendamento', element: <Agendamento /> },
+          { path: '/relatorios', element: <Relatorios /> },
+        ],
+      },
+      {
+        element: <ProtectedRoute allowedRoles={['Gerente RH']} />,
+        children: [{ path: '/avaliacao', element: <Avaliacao /> }],
+      },
+      {
+        element: <ProtectedRoute allowedRoles={['Diretor Técnico']} />,
+        children: [{ path: '/aprovacao', element: <Aprovacao /> }],
+      },
+    ],
+  },
+  { path: '*', element: <NotFound /> },
+])
+
 const App = () => (
   <ErrorBoundary>
     <AuthProvider>
-      <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-        <TooltipProvider>
-          <ShadcnToaster />
-          <Sonner />
-          <Suspense fallback={<Fallback />}>
-            <Routes>
-              <Route element={<PublicLayout />}>
-                <Route path="/" element={<Landing />} />
-                <Route path="/candidatar" element={<Candidatar />} />
-              </Route>
-
-              <Route element={<AuthLayout />}>
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-              </Route>
-
-              <Route element={<MainLayout />}>
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/configuracoes" element={<Configuracoes />} />
-                </Route>
-
-                <Route element={<ProtectedRoute allowedRoles={['Candidato']} />}>
-                  <Route path="/candidatos/dashboard" element={<CandidatoDashboard />} />
-                </Route>
-
-                <Route
-                  element={<ProtectedRoute allowedRoles={['Gerente RH', 'Diretor Técnico']} />}
-                >
-                  <Route path="/captacao" element={<Captacao />} />
-                  <Route path="/captacao/form" element={<CaptacaoForm />} />
-                  <Route path="/candidatos" element={<Candidatos />} />
-                  <Route path="/agendamento" element={<Agendamento />} />
-                  <Route path="/relatorios" element={<Relatorios />} />
-                </Route>
-                <Route element={<ProtectedRoute allowedRoles={['Gerente RH']} />}>
-                  <Route path="/avaliacao" element={<Avaliacao />} />
-                </Route>
-                <Route element={<ProtectedRoute allowedRoles={['Diretor Técnico']} />}>
-                  <Route path="/aprovacao" element={<Aprovacao />} />
-                </Route>
-              </Route>
-
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </TooltipProvider>
-      </BrowserRouter>
+      <TooltipProvider>
+        <ShadcnToaster />
+        <Sonner />
+        <Suspense fallback={<Fallback />}>
+          <RouterProvider router={router} />
+        </Suspense>
+      </TooltipProvider>
     </AuthProvider>
   </ErrorBoundary>
 )
