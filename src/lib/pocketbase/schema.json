@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-31T16:53:02.945Z",
+  "generatedAt": "2026-08-01T00:13:40.442Z",
   "collections": [
     {
       "name": "users",
@@ -29,21 +29,30 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "role",
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["Candidato", "Gerente RH", "Diretor Técnico"]
+          "selectValues": [
+            "Candidato",
+            "Gerente RH",
+            "Diretor Técnico"
+          ]
         }
       ],
       "indexes": [
@@ -131,7 +140,13 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["Nenhuma", "Menos de 1 ano", "1-3 anos", "3-5 anos", "Mais de 5 anos"]
+          "selectValues": [
+            "Nenhuma",
+            "Menos de 1 ano",
+            "1-3 anos",
+            "3-5 anos",
+            "Mais de 5 anos"
+          ]
         },
         {
           "name": "descricaoSUS",
@@ -144,7 +159,10 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["Nenhuma", "Sim, tenho experiência"]
+          "selectValues": [
+            "Nenhuma",
+            "Sim, tenho experiência"
+          ]
         },
         {
           "name": "descricaoTelemedicina",
@@ -197,7 +215,9 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "dataManifestacao",
@@ -216,14 +236,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "curriculo",
@@ -304,17 +329,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE INDEX idx_manifestacoes_candidatoId ON manifestacoes (candidatoId)"]
+      "indexes": [
+        "CREATE INDEX idx_manifestacoes_candidatoId ON manifestacoes (candidatoId)"
+      ]
     },
     {
       "name": "avaliacoes",
@@ -375,7 +407,10 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["Recomendado", "Não Recomendado"]
+          "selectValues": [
+            "Recomendado",
+            "Não Recomendado"
+          ]
         },
         {
           "name": "observacoes",
@@ -388,17 +423,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE INDEX idx_avaliacoes_candidatoId ON avaliacoes (candidatoId)"]
+      "indexes": [
+        "CREATE INDEX idx_avaliacoes_candidatoId ON avaliacoes (candidatoId)"
+      ]
     },
     {
       "name": "interviews",
@@ -471,17 +513,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE INDEX idx_interviews_candidatoId ON interviews (candidatoId)"]
+      "indexes": [
+        "CREATE INDEX idx_interviews_candidatoId ON interviews (candidatoId)"
+      ]
     }
   ]
 }
